@@ -1,81 +1,49 @@
 
-  // ---------- Cuentas y estado compartido ----------
-  // currentUser: usuario con el que se ha iniciado sesión en este dispositivo.
-  // appState: registro de todas las cuentas y sus datos.
-  //
-  // NOTA IMPORTANTE (ver README.md): en la versión publicada como Artifact de
-  // Claude.ai, este mismo módulo usaba la capacidad "artifact" de Claude para
-  // que los datos de una cuenta viajaran entre dispositivos, publicando de
-  // nuevo toda la página en cada guardado. Esa capacidad NO existe fuera de
-  // Claude.ai (no funciona en Netlify ni en ningún otro hosting), así que en
-  // esta versión el estado se guarda en localStorage: fiable y sin recargas,
-  // pero cada dispositivo/navegador tiene sus propios datos por cuenta (no
-  // viajan solos entre dispositivos). Si más adelante se quiere que las
-  // cuentas se sincronicen de verdad entre dispositivos, hace falta un
-  // backend propio (por ejemplo, Netlify Functions + una base de datos).
-  const APP_STATE_KEY = 'oficina-entrenador-cuentas';
+  // ---------- Cuentas y datos: backend real (Supabase) ----------
+  // Las cuentas (usuario + contraseña) y los datos de cada equipo viven en
+  // una base de datos real, no en localStorage del navegador (ver
+  // supabase_schema.sql y el README). Esto permite: contraseñas cifradas de
+  // verdad, que un mismo usuario vea sus datos desde cualquier dispositivo,
+  // y que el propietario del proyecto vea/gestione todas las cuentas desde
+  // el panel de Supabase (Authentication > Users y Table Editor), sin
+  // necesidad de un panel de administrador aparte dentro de la app.
+  const SUPABASE_URL = 'https://gffbjjyrdlojwqfzjnyv.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_DjdcZUe7OG8Z5F1c30Bd3g__eENvTzw';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  let appState = { users: {} };
-  try {
-    const raw = localStorage.getItem(APP_STATE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && parsed.users && typeof parsed.users === 'object') {
-        appState = parsed;
-      }
-    }
-  } catch (error) {
-    console.error('No se pudo leer el estado guardado de la app:', error);
+  // Supabase Auth se identifica por email; usamos un dominio ficticio para
+  // que el entrenador solo tenga que recordar un nombre de usuario.
+  function usernameToEmail(username) {
+    return `${username}@users.oficinaentrenadores.app`;
   }
 
-  let currentUser = null;
-
-  function persistState() {
-    try {
-      localStorage.setItem(APP_STATE_KEY, JSON.stringify(appState));
-    } catch (error) {
-      console.error('No se pudo guardar el cambio:', error);
-    }
-  }
-
-  // Se mantiene el nombre "schedulePublish" en las llamadas existentes del
-  // resto del código para no tener que tocar cada punto de guardado; aquí
-  // simplemente agrupa escrituras seguidas en una sola (por si se añaden
-  // varios cambios muy rápido) y guarda en localStorage sin recargar nada.
-  let publishTimer = null;
-  function schedulePublish(delay = 300) {
-    clearTimeout(publishTimer);
-    publishTimer = setTimeout(persistState, delay);
-  }
-
-  function getUserData() {
-    return appState.users[currentUser];
-  }
+  let currentUser = null; // { id, username } una vez ha iniciado sesión
 
   // ---------- Datos de la plantilla ----------
   const defaultPlayers = [
-    { id: 1,  number: 1,  name: 'Marc Vidal',      position: 'POR', present: true  },
-    { id: 2,  number: 4,  name: 'Àlex Puig',       position: 'DEF', present: true  },
-    { id: 3,  number: 5,  name: 'Jordi Camps',     position: 'DEF', present: false },
-    { id: 4,  number: 3,  name: 'Nil Serra',       position: 'DEF', present: true  },
-    { id: 5,  number: 8,  name: 'Pau Ferrer',      position: 'MED', present: true  },
-    { id: 6,  number: 6,  name: 'Bruno Soto',      position: 'MED', present: true  },
-    { id: 7,  number: 10, name: 'Guillem Riera',   position: 'MED', present: false },
-    { id: 8,  number: 7,  name: 'Aleix Roca',      position: 'DEL', present: true  },
-    { id: 9,  number: 9,  name: 'Marc Aguilar',    position: 'DEL', present: true  },
-    { id: 10, number: 11, name: 'Dani Prats',      position: 'DEL', present: true  },
+    { number: 1,  name: 'Marc Vidal',      position: 'POR', present: true  },
+    { number: 4,  name: 'Àlex Puig',       position: 'DEF', present: true  },
+    { number: 5,  name: 'Jordi Camps',     position: 'DEF', present: false },
+    { number: 3,  name: 'Nil Serra',       position: 'DEF', present: true  },
+    { number: 8,  name: 'Pau Ferrer',      position: 'MED', present: true  },
+    { number: 6,  name: 'Bruno Soto',      position: 'MED', present: true  },
+    { number: 10, name: 'Guillem Riera',   position: 'MED', present: false },
+    { number: 7,  name: 'Aleix Roca',      position: 'DEL', present: true  },
+    { number: 9,  name: 'Marc Aguilar',    position: 'DEL', present: true  },
+    { number: 11, name: 'Dani Prats',      position: 'DEL', present: true  },
   ];
 
   let players = [];
 
-  function loadPlayers() {
-    players = getUserData().players;
+  async function loadPlayers() {
+    const { data, error } = await db.from('players').select('*').order('number', { ascending: true });
+    if (error) {
+      console.error('No se pudieron cargar los jugadores:', error);
+      players = [];
+    } else {
+      players = data;
+    }
     renderPlayers();
-  }
-
-  function savePlayers() {
-    getUserData().players = players;
-    schedulePublish();
   }
 
   const positionStyles = {
@@ -88,13 +56,14 @@
   const grid = document.getElementById('players-grid');
   const countEl = document.getElementById('plantilla-count');
 
-  grid.addEventListener('click', (e) => {
+  grid.addEventListener('click', async (e) => {
     const deleteBtn = e.target.closest('.btn-delete-player');
     if (deleteBtn) {
       const id = Number(deleteBtn.dataset.deleteId);
+      const { error } = await db.from('players').delete().eq('id', id);
+      if (error) { console.error(error); alert('No se pudo eliminar el jugador.'); return; }
       players = players.filter(p => p.id !== id);
       renderPlayers();
-      savePlayers();
       return;
     }
     const editBtn = e.target.closest('.btn-edit-player');
@@ -108,11 +77,12 @@
     if (presentBtn) {
       const id = Number(presentBtn.dataset.presentId);
       const player = players.find(p => p.id === id);
-      if (player) {
-        player.present = !player.present;
-        renderPlayers();
-        savePlayers();
-      }
+      if (!player) return;
+      const nextPresent = !player.present;
+      const { error } = await db.from('players').update({ present: nextPresent }).eq('id', id);
+      if (error) { console.error(error); return; }
+      player.present = nextPresent;
+      renderPlayers();
       return;
     }
   });
@@ -262,7 +232,7 @@
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
   modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
 
-  form.addEventListener('submit', (e) => {
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const number = parseInt(document.getElementById('input-number').value, 10);
     const name = document.getElementById('input-name').value.trim();
@@ -270,6 +240,8 @@
     const present = inputPresent.checked;
     if (!name || !number) return;
     if (editingPlayerId !== null) {
+      const { error } = await db.from('players').update({ number, name, position, present }).eq('id', editingPlayerId);
+      if (error) { console.error(error); alert('No se pudo guardar el jugador.'); return; }
       const player = players.find(p => p.id === editingPlayerId);
       if (player) {
         player.number = number;
@@ -278,11 +250,14 @@
         player.present = present;
       }
     } else {
-      const nextId = players.length ? Math.max(...players.map(p => p.id)) + 1 : 1;
-      players.push({ id: nextId, number, name, position, present });
+      const { data, error } = await db.from('players')
+        .insert({ user_id: currentUser.id, number, name, position, present })
+        .select()
+        .single();
+      if (error) { console.error(error); alert('No se pudo crear el jugador.'); return; }
+      players.push(data);
     }
     renderPlayers();
-    savePlayers();
     closeModal();
   });
 
@@ -371,18 +346,24 @@
     return ball;
   }
 
-  function savePizarraData() {
+  async function savePizarraData() {
     const positions = {};
     pitch.querySelectorAll('.token').forEach(token => {
       positions[token.id] = { x: parseFloat(token.style.left), y: parseFloat(token.style.top) };
     });
-    getUserData().pizarra = { positions, strokes: drawnStrokes };
-    schedulePublish();
+    const { error } = await db.from('pizarra').upsert({
+      user_id: currentUser.id,
+      positions,
+      strokes: drawnStrokes,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) console.error('No se pudo guardar la pizarra:', error);
   }
 
-  function renderPitch() {
+  async function renderPitch() {
     pitch.querySelectorAll('.token').forEach(token => token.remove());
-    const saved = getUserData().pizarra;
+    const { data: saved, error } = await db.from('pizarra').select('*').maybeSingle();
+    if (error) console.error('No se pudo cargar la pizarra:', error);
     const savedPos = saved ? saved.positions : null;
     drawnStrokes = saved && saved.strokes ? saved.strokes : [];
     blueFormation.forEach(p => pitch.appendChild(createChip(p, 'blue', savedPos)));
@@ -525,26 +506,26 @@
   };
 
   const defaultExercises = [
-    { id: 1, name: 'Rondo 4v2',            category: 'Técnico', duration: '15 min', desc: 'Posesión en espacio reducido para mejorar el primer toque.' },
-    { id: 2, name: 'Series de sprints',    category: 'Físico',  duration: '20 min', desc: '6x40m con recuperación activa entre repeticiones.' },
-    { id: 3, name: 'Presión tras pérdida', category: 'Táctico', duration: '25 min', desc: 'Reorganización defensiva en los primeros segundos tras perder el balón.' },
-    { id: 4, name: 'Circuito de fuerza',   category: 'Físico',  duration: '30 min', desc: 'Trabajo de tren inferior con ejercicios de autocarga.' },
-    { id: 5, name: 'Posesión 7v7',         category: 'Táctico', duration: '20 min', desc: 'Mantenimiento del balón con líneas de pase definidas.' },
-    { id: 6, name: 'Control orientado',    category: 'Técnico', duration: '15 min', desc: 'Recepción y primer toque bajo presión de un defensor.' },
+    { name: 'Rondo 4v2',            category: 'Técnico', duration: '15 min', desc: 'Posesión en espacio reducido para mejorar el primer toque.' },
+    { name: 'Series de sprints',    category: 'Físico',  duration: '20 min', desc: '6x40m con recuperación activa entre repeticiones.' },
+    { name: 'Presión tras pérdida', category: 'Táctico', duration: '25 min', desc: 'Reorganización defensiva en los primeros segundos tras perder el balón.' },
+    { name: 'Circuito de fuerza',   category: 'Físico',  duration: '30 min', desc: 'Trabajo de tren inferior con ejercicios de autocarga.' },
+    { name: 'Posesión 7v7',         category: 'Táctico', duration: '20 min', desc: 'Mantenimiento del balón con líneas de pase definidas.' },
+    { name: 'Control orientado',    category: 'Técnico', duration: '15 min', desc: 'Recepción y primer toque bajo presión de un defensor.' },
   ];
 
   let exercises = [];
   let currentExerciseFilter = 'Todos';
 
-  function loadExercises() {
-    exercises = getUserData().exercises;
-    exerciseNextId = exercises.length ? Math.max(...exercises.map(ex => ex.id)) + 1 : 1;
+  async function loadExercises() {
+    const { data, error } = await db.from('exercises').select('*').order('created_at', { ascending: true });
+    if (error) {
+      console.error('No se pudieron cargar los ejercicios:', error);
+      exercises = [];
+    } else {
+      exercises = data.map(ex => ({ id: ex.id, name: ex.name, category: ex.category, duration: ex.duration, desc: ex.description }));
+    }
     renderExercises(currentExerciseFilter);
-  }
-
-  function saveExercises() {
-    getUserData().exercises = exercises;
-    schedulePublish();
   }
 
   const exercisesGrid = document.getElementById('exercises-grid');
@@ -577,12 +558,14 @@
       });
   }
 
-  exercisesGrid.addEventListener('click', (e) => {
+  exercisesGrid.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-exercise');
     if (!btn) return;
-    exercises = exercises.filter(ex => ex.id !== Number(btn.dataset.deleteExercise));
+    const id = Number(btn.dataset.deleteExercise);
+    const { error } = await db.from('exercises').delete().eq('id', id);
+    if (error) { console.error(error); return; }
+    exercises = exercises.filter(ex => ex.id !== id);
     renderExercises(currentExerciseFilter);
-    saveExercises();
   });
 
   document.getElementById('exercise-filters').addEventListener('click', (e) => {
@@ -602,7 +585,6 @@
 
   const exerciseModalBackdrop = document.getElementById('exercise-modal-backdrop');
   const exerciseForm = document.getElementById('form-add-exercise');
-  let exerciseNextId = 7;
 
   function openExerciseModal() {
     exerciseModalBackdrop.classList.remove('hidden');
@@ -619,16 +601,20 @@
   document.getElementById('exercise-modal-cancel').addEventListener('click', closeExerciseModal);
   exerciseModalBackdrop.addEventListener('click', (e) => { if (e.target === exerciseModalBackdrop) closeExerciseModal(); });
 
-  exerciseForm.addEventListener('submit', (e) => {
+  exerciseForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('input-exercise-name').value.trim();
     const category = document.getElementById('input-exercise-category').value;
     const duration = document.getElementById('input-exercise-duration').value.trim();
     const desc = document.getElementById('input-exercise-desc').value.trim();
     if (!name) return;
-    exercises.push({ id: exerciseNextId++, name, category, duration: duration || '—', desc });
+    const { data, error } = await db.from('exercises')
+      .insert({ user_id: currentUser.id, name, category, duration: duration || '—', description: desc })
+      .select()
+      .single();
+    if (error) { console.error(error); alert('No se pudo crear el ejercicio.'); return; }
+    exercises.push({ id: data.id, name: data.name, category: data.category, duration: data.duration, desc: data.description });
     renderExercises(currentExerciseFilter);
-    saveExercises();
     closeExerciseModal();
   });
 
@@ -829,51 +815,47 @@
   });
 
   // ---------- Scouting y Rival (Módulo 6) ----------
-  let scoutingId = 1;
   let scoutingTargets = [];
 
-  const defaultScoutingData = {
-    rival: { name: '', system: '', notes: '' },
-    targets: [
-      { id: 1, name: 'Roc Alsina',  position: 'MED', club: 'U.E. Comarcal',    note: 'Buen golpeo de balón a balón parado. Rinde a buen nivel en categoría superior.' },
-      { id: 2, name: 'Iker Montes', position: 'DEF', club: 'C.F. Puente Alto', note: 'Central zurdo, salida de balón limpia. Disponible en enero.' },
-      { id: 3, name: 'Toni Camps',  position: 'DEL', club: 'A.E. Vallpark',    note: 'Delantero rápido, buen desmarque a la espalda. Pendiente de ver un partido más.' },
-    ],
-  };
+  const defaultScoutingTargets = [
+    { name: 'Roc Alsina',  position: 'MED', club: 'U.E. Comarcal',    note: 'Buen golpeo de balón a balón parado. Rinde a buen nivel en categoría superior.' },
+    { name: 'Iker Montes', position: 'DEF', club: 'C.F. Puente Alto', note: 'Central zurdo, salida de balón limpia. Disponible en enero.' },
+    { name: 'Toni Camps',  position: 'DEL', club: 'A.E. Vallpark',    note: 'Delantero rápido, buen desmarque a la espalda. Pendiente de ver un partido más.' },
+  ];
 
   const inputRivalName = document.getElementById('input-rival-name');
   const inputRivalSystem = document.getElementById('input-rival-system');
   const inputRivalNotes = document.getElementById('input-rival-notes');
 
-  function updateScoutingState() {
-    getUserData().scouting = {
-      rival: {
-        name: inputRivalName.value,
-        system: inputRivalSystem.value,
-        notes: inputRivalNotes.value,
-      },
-      targets: scoutingTargets,
-    };
+  async function saveRivalInfo() {
+    const { error } = await db.from('scouting_rival').upsert({
+      user_id: currentUser.id,
+      name: inputRivalName.value,
+      system: inputRivalSystem.value,
+      notes: inputRivalNotes.value,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) console.error('No se pudo guardar la info del rival:', error);
   }
 
-  function saveScoutingData() {
-    updateScoutingState();
-    schedulePublish();
-  }
-
-  // Pequeña espera tras dejar de escribir, para no publicar en cada pulsación de tecla.
+  // Pequeña espera tras dejar de escribir, para no guardar en cada pulsación de tecla.
+  let scoutingSaveTimer = null;
   function scheduleScoutingSave() {
-    updateScoutingState();
-    schedulePublish(1200);
+    clearTimeout(scoutingSaveTimer);
+    scoutingSaveTimer = setTimeout(saveRivalInfo, 1200);
   }
 
-  function loadScoutingData() {
-    const data = getUserData().scouting || defaultScoutingData;
-    inputRivalName.value = data.rival?.name || '';
-    inputRivalSystem.value = data.rival?.system || '';
-    inputRivalNotes.value = data.rival?.notes || '';
-    scoutingTargets = data.targets || [];
-    scoutingId = scoutingTargets.length ? Math.max(...scoutingTargets.map(t => t.id)) + 1 : 1;
+  async function loadScoutingData() {
+    const [{ data: rival, error: rivalError }, { data: targets, error: targetsError }] = await Promise.all([
+      db.from('scouting_rival').select('*').maybeSingle(),
+      db.from('scouting_targets').select('*').order('created_at', { ascending: true }),
+    ]);
+    if (rivalError) console.error('No se pudo cargar la info del rival:', rivalError);
+    if (targetsError) console.error('No se pudieron cargar los fichajes:', targetsError);
+    inputRivalName.value = rival?.name || '';
+    inputRivalSystem.value = rival?.system || '';
+    inputRivalNotes.value = rival?.notes || '';
+    scoutingTargets = targets || [];
     renderScoutingTargets();
   }
 
@@ -911,12 +893,14 @@
     scoutingCountEl.textContent = scoutingTargets.length;
   }
 
-  scoutingGrid.addEventListener('click', (e) => {
+  scoutingGrid.addEventListener('click', async (e) => {
     const btn = e.target.closest('.btn-delete-scout');
     if (!btn) return;
-    scoutingTargets = scoutingTargets.filter(t => t.id !== Number(btn.dataset.deleteScout));
+    const id = Number(btn.dataset.deleteScout);
+    const { error } = await db.from('scouting_targets').delete().eq('id', id);
+    if (error) { console.error(error); return; }
+    scoutingTargets = scoutingTargets.filter(t => t.id !== id);
     renderScoutingTargets();
-    saveScoutingData();
   });
 
   const scoutModalBackdrop = document.getElementById('scout-modal-backdrop');
@@ -937,27 +921,36 @@
   document.getElementById('scout-modal-cancel').addEventListener('click', closeScoutModal);
   scoutModalBackdrop.addEventListener('click', (e) => { if (e.target === scoutModalBackdrop) closeScoutModal(); });
 
-  scoutForm.addEventListener('submit', (e) => {
+  scoutForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('input-scout-name').value.trim();
     const position = document.getElementById('input-scout-position').value;
     const club = document.getElementById('input-scout-club').value.trim();
     const note = document.getElementById('input-scout-note').value.trim();
     if (!name) return;
-    scoutingTargets.push({ id: scoutingId++, name, position, club, note });
+    const { data, error } = await db.from('scouting_targets')
+      .insert({ user_id: currentUser.id, name, position, club, note })
+      .select()
+      .single();
+    if (error) { console.error(error); alert('No se pudo guardar el fichaje.'); return; }
+    scoutingTargets.push(data);
     renderScoutingTargets();
-    saveScoutingData();
     closeScoutModal();
   });
 
   // ---------- Cuentas: acceso y registro ----------
-  function defaultUserData() {
-    return {
-      players: JSON.parse(JSON.stringify(defaultPlayers)),
-      pizarra: { positions: null, strokes: [] },
-      exercises: JSON.parse(JSON.stringify(defaultExercises)),
-      scouting: JSON.parse(JSON.stringify(defaultScoutingData)),
-    };
+  // Rellena una cuenta recién creada con datos de ejemplo, igual que antes,
+  // para que la primera vez que se entra la app no se vea vacía.
+  async function seedDefaultData(userId) {
+    await db.from('players').insert(
+      defaultPlayers.map(p => ({ user_id: userId, number: p.number, name: p.name, position: p.position, present: p.present }))
+    );
+    await db.from('exercises').insert(
+      defaultExercises.map(ex => ({ user_id: userId, name: ex.name, category: ex.category, duration: ex.duration, description: ex.desc }))
+    );
+    await db.from('scouting_targets').insert(
+      defaultScoutingTargets.map(t => ({ user_id: userId, name: t.name, position: t.position, club: t.club, note: t.note }))
+    );
   }
 
   const authScreen = document.getElementById('auth-screen');
@@ -993,14 +986,12 @@
   authTabLogin.addEventListener('click', () => setAuthTab('login'));
   authTabRegister.addEventListener('click', () => setAuthTab('register'));
 
-  function bootApp() {
+  async function bootApp() {
     authScreen.classList.add('hidden');
     appRoot.classList.remove('hidden');
     appRoot.classList.add('flex');
-    loadPlayers();
-    renderPitch();
-    loadExercises();
-    loadScoutingData();
+    document.getElementById('current-username').textContent = currentUser.username;
+    await Promise.all([loadPlayers(), renderPitch(), loadExercises(), loadScoutingData()]);
     document.getElementById('today-date').textContent =
       new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
     requestAnimationFrame(() => {
@@ -1008,39 +999,61 @@
     });
   }
 
-  formLogin.addEventListener('submit', (e) => {
+  formLogin.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('login-username').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
-    const user = appState.users[username];
-    if (!user || user.password !== password) {
+    if (!username || !password) return;
+    hideAuthError(loginError);
+    const { data, error } = await db.auth.signInWithPassword({ email: usernameToEmail(username), password });
+    if (error) {
       showAuthError(loginError, 'Usuario o contraseña incorrectos.');
       return;
     }
-    currentUser = username;
-    bootApp();
+    currentUser = { id: data.user.id, username: data.user.user_metadata?.username || username };
+    await bootApp();
   });
 
-  formRegister.addEventListener('submit', (e) => {
+  formRegister.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('register-username').value.trim().toLowerCase();
     const password = document.getElementById('register-password').value;
     if (!username || !password) return;
-    if (appState.users[username]) {
-      showAuthError(registerError, 'Ese usuario ya existe. Elige otro nombre o inicia sesión.');
+    hideAuthError(registerError);
+    const { data, error } = await db.auth.signUp({
+      email: usernameToEmail(username),
+      password,
+      options: { data: { username } },
+    });
+    if (error) {
+      showAuthError(registerError, error.message || 'No se pudo crear la cuenta.');
       return;
     }
-    appState.users[username] = { password, ...defaultUserData() };
-    currentUser = username;
-    schedulePublish(200);
-    bootApp();
+    currentUser = { id: data.user.id, username };
+    await seedDefaultData(currentUser.id);
+    await bootApp();
   });
 
-  // ---------- Exportar / Importar datos (respaldo entre dispositivos) ----------
-  // Los datos solo viven en el localStorage de este navegador (ver nota al
-  // principio del archivo). Estos botones permiten sacar un .json de la
-  // cuenta activa y volver a cargarlo en otro dispositivo/navegador para
-  // pasarse la plantilla y el resto de datos por WhatsApp, correo, etc.
+  document.getElementById('btn-logout').addEventListener('click', async () => {
+    await db.auth.signOut();
+    location.reload();
+  });
+
+  // Si ya había una sesión activa (misma pestaña/navegador), entra directo
+  // sin pedir usuario y contraseña otra vez.
+  (async function restoreSession() {
+    const { data: { session } } = await db.auth.getSession();
+    if (session?.user) {
+      currentUser = { id: session.user.id, username: session.user.user_metadata?.username || session.user.email.split('@')[0] };
+      await bootApp();
+    }
+  })();
+
+  // ---------- Exportar / Importar datos (respaldo / copia manual) ----------
+  // Los datos ya viven en el servidor y se ven desde cualquier dispositivo,
+  // así que esto ya no hace falta para el uso normal del día a día. Se deja
+  // como copia de seguridad manual descargable, por si alguien quiere
+  // guardar un respaldo de su equipo en su ordenador.
   const importExportMsg = document.getElementById('import-export-msg');
   let importExportMsgTimer = null;
 
@@ -1053,16 +1066,22 @@
 
   document.getElementById('btn-export-data').addEventListener('click', () => {
     if (!currentUser) return;
-    const userData = getUserData();
+    const positions = {};
+    pitch.querySelectorAll('.token').forEach(token => {
+      positions[token.id] = { x: parseFloat(token.style.left), y: parseFloat(token.style.top) };
+    });
     const exportPayload = {
       app: 'oficina-entrenador',
       exportedAt: new Date().toISOString(),
-      username: currentUser,
+      username: currentUser.username,
       data: {
-        players: userData.players,
-        pizarra: userData.pizarra,
-        exercises: userData.exercises,
-        scouting: userData.scouting,
+        players: players.map(({ number, name, position, present }) => ({ number, name, position, present })),
+        pizarra: { positions, strokes: drawnStrokes },
+        exercises: exercises.map(({ name, category, duration, desc }) => ({ name, category, duration, desc })),
+        scouting: {
+          rival: { name: inputRivalName.value, system: inputRivalSystem.value, notes: inputRivalNotes.value },
+          targets: scoutingTargets.map(({ name, position, club, note }) => ({ name, position, club, note })),
+        },
       },
     };
     const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
@@ -1070,7 +1089,7 @@
     const a = document.createElement('a');
     const dateStamp = new Date().toISOString().slice(0, 10);
     a.href = url;
-    a.download = `oficina-entrenador-${currentUser}-${dateStamp}.json`;
+    a.download = `oficina-entrenador-${currentUser.username}-${dateStamp}.json`;
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -1085,7 +1104,7 @@
     const file = importFileInput.files[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       let parsed;
       try {
         parsed = JSON.parse(reader.result);
@@ -1109,17 +1128,56 @@
         importFileInput.value = '';
         return;
       }
-      const userData = getUserData();
-      if (Array.isArray(incoming.players)) userData.players = incoming.players;
-      if (incoming.pizarra && typeof incoming.pizarra === 'object') userData.pizarra = incoming.pizarra;
-      if (Array.isArray(incoming.exercises)) userData.exercises = incoming.exercises;
-      if (incoming.scouting && typeof incoming.scouting === 'object') userData.scouting = incoming.scouting;
-      persistState();
-      loadPlayers();
-      renderPitch();
-      loadExercises();
-      loadScoutingData();
-      showImportExportMsg('Datos importados correctamente.');
+      try {
+        if (Array.isArray(incoming.players)) {
+          await db.from('players').delete().eq('user_id', currentUser.id);
+          if (incoming.players.length) {
+            await db.from('players').insert(incoming.players.map(p => ({
+              user_id: currentUser.id, number: p.number, name: p.name, position: p.position, present: !!p.present,
+            })));
+          }
+        }
+        if (incoming.pizarra && typeof incoming.pizarra === 'object') {
+          await db.from('pizarra').upsert({
+            user_id: currentUser.id,
+            positions: incoming.pizarra.positions || null,
+            strokes: incoming.pizarra.strokes || [],
+            updated_at: new Date().toISOString(),
+          });
+        }
+        if (Array.isArray(incoming.exercises)) {
+          await db.from('exercises').delete().eq('user_id', currentUser.id);
+          if (incoming.exercises.length) {
+            await db.from('exercises').insert(incoming.exercises.map(ex => ({
+              user_id: currentUser.id, name: ex.name, category: ex.category, duration: ex.duration,
+              description: ex.desc ?? ex.description,
+            })));
+          }
+        }
+        if (incoming.scouting && typeof incoming.scouting === 'object') {
+          const rival = incoming.scouting.rival || {};
+          await db.from('scouting_rival').upsert({
+            user_id: currentUser.id,
+            name: rival.name || '',
+            system: rival.system || '',
+            notes: rival.notes || '',
+            updated_at: new Date().toISOString(),
+          });
+          if (Array.isArray(incoming.scouting.targets)) {
+            await db.from('scouting_targets').delete().eq('user_id', currentUser.id);
+            if (incoming.scouting.targets.length) {
+              await db.from('scouting_targets').insert(incoming.scouting.targets.map(t => ({
+                user_id: currentUser.id, name: t.name, position: t.position, club: t.club, note: t.note,
+              })));
+            }
+          }
+        }
+        await Promise.all([loadPlayers(), renderPitch(), loadExercises(), loadScoutingData()]);
+        showImportExportMsg('Datos importados correctamente.');
+      } catch (err) {
+        console.error(err);
+        showImportExportMsg('Hubo un error al importar los datos.');
+      }
       importFileInput.value = '';
     };
     reader.readAsText(file);

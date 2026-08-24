@@ -1,6 +1,6 @@
 # Oficina del Entrenador
 
-App de gestión para entrenadores de fútbol: plantilla, pizarra táctica, generador de entrenamientos, partido en vivo y scouting del rival. Un único front-end estático (HTML + CSS + JS), sin backend, pensado para desplegarse en Netlify (o cualquier hosting estático) y versionarse en GitHub.
+App de gestión para entrenadores de fútbol: plantilla, pizarra táctica, generador de entrenamientos, partido en vivo y scouting del rival. Front-end estático (HTML + CSS + JS) desplegado en Netlify, con **Supabase** como backend real (cuentas de usuario y base de datos).
 
 Este documento resume dónde está el proyecto ahora mismo, qué falta por hacer, y los pasos para seguir trabajando en Claude Code, subirlo a GitHub y desplegarlo en Netlify.
 
@@ -17,6 +17,7 @@ oficina-entrenador-app/
 ├── tailwind.config.js     # Paleta de colores y tipografías del tema
 ├── package.json           # Script para regenerar css/styles.css
 ├── netlify.toml           # Configuración de despliegue en Netlify
+├── supabase_schema.sql    # Tablas + Row Level Security a ejecutar una vez en Supabase
 └── .gitignore
 ```
 
@@ -55,22 +56,31 @@ Hay también `npm run css:watch` para que se regenere automáticamente mientras 
 5. **Gestión de Minutos y Partido** ✅ — Cronómetro, alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. **Sin persistencia** (ver nota abajo): corre solo en memoria del dispositivo, se reinicia al recargar la página.
 6. **Scouting y Rival** ✅ — Notas del rival con autoguardado, lista de seguimiento de fichajes con alta/baja.
 
-### Cuentas de usuario
+### Cuentas de usuario y backend (Supabase)
 
-Hay una pantalla de acceso (usuario + contraseña) para que varias personas puedan probar la app cada una con sus propios datos.
+Hay una pantalla de acceso (usuario + contraseña) respaldada por **Supabase Auth** — un backend real, no `localStorage`:
 
-**Importante — limitaciones actuales, a tener en cuenta antes de dar la app por "lista":**
+- **Contraseñas cifradas de verdad**, gestionadas por Supabase (no las ve ni las guarda esta app en texto plano).
+- **Los datos viajan entre dispositivos.** Un mismo usuario ve la misma plantilla/pizarra/entrenamientos/scouting tanto desde el móvil como desde el ordenador, porque todo vive en una base de datos (Postgres) en vez de en el navegador.
+- **Row Level Security**: cada usuario solo puede leer/escribir sus propias filas (reglas definidas en `supabase_schema.sql`), aunque las claves del cliente sean públicas.
+- **Panel de administrador = panel de Supabase.** No hay una pantalla de "admin" dentro de la app; el propietario del proyecto ve y gestiona todas las cuentas desde el propio dashboard de Supabase:
+  - **Authentication → Users**: lista de todos los usuarios registrados (borrar cuentas, resetear contraseñas, etc.).
+  - **Table Editor**: contenido de `players`, `pizarra`, `exercises`, `scouting_rival`, `scouting_targets` de cualquier usuario.
+- Como el login es por **usuario** (no email real), internamente se construye un email ficticio `usuario@users.oficinaentrenadores.app` solo para que Supabase Auth tenga algo con formato de email — el usuario nunca lo ve ni lo necesita.
+- El módulo de **Partido en Vivo** sigue sin guardar nada (decisión explícita para no complicar el cronómetro en tiempo real): si recargas a mitad de partido, se reinicia.
 
-- **No es autenticación segura.** Las contraseñas se guardan tal cual (sin cifrar) en el almacenamiento del navegador. Vale para un grupo cerrado de gente de confianza haciendo pruebas; no reutilizar contraseñas importantes.
-- **Los datos NO viajan entre dispositivos.** Cada cuenta guarda sus datos con `localStorage`, es decir, en el navegador donde se usa. Si la misma persona abre la app desde otro móvil/ordenador, no verá sus datos — es como empezar de cero ahí. (Se intentó una versión que sí sincronizaba entre dispositivos usando una capacidad especial de Claude.ai, pero esa capacidad no existe fuera de Claude.ai, así que no sirve para una app en Netlify. Ver "Pendiente" más abajo.)
-- El módulo de **Partido en Vivo** no guarda nada en absoluto todavía (ni siquiera por dispositivo): fue una decisión explícita para no complicar el cronómetro en tiempo real. Si recargas la página a mitad de partido, se reinicia.
+**Configuración de Supabase que hay que mantener** (Authentication → Sign In / Providers → Email, en el proyecto Supabase):
+- **Enable email provider**: activado.
+- **Confirm email**: **desactivado** (si no, las cuentas quedan a medio crear esperando un email de confirmación que nunca llega, porque el email es ficticio).
+
+Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en `js/app.js` a propósito — son claves **públicas**, pensadas para ir en el navegador; la seguridad real la da Row Level Security en la base de datos, no el secretismo de esas claves. La `service_role key` de Supabase (secreta) **nunca** debe ponerse en este código.
 
 ## Pendiente / lista de mejoras
 
 **Cuentas y datos**
-- [ ] Decidir si de verdad se necesita que las cuentas sincronicen entre dispositivos. Si sí, hace falta un backend real (por ejemplo, Netlify Functions + una base de datos tipo Supabase/Firebase/Postgres), con contraseñas cifradas de verdad. Esto es un cambio de arquitectura, no un simple ajuste.
-- [ ] Si no hace falta sincronizar entre dispositivos, al menos cifrar/hashear la contraseña antes de guardarla (aunque sea local).
-- [x] Exportar/importar los datos de una cuenta: botones "Exportar datos" / "Importar datos" en la barra lateral. Exportan un `.json` (plantilla, pizarra, entrenamientos y scouting, sin la contraseña) y permiten restaurarlo en otro dispositivo/navegador — útil para pasarse los datos por WhatsApp o correo mientras no haya sincronización real.
+- [x] Backend real con Supabase: cuentas cifradas, sincronización entre dispositivos, y gestión de usuarios desde el panel de Supabase (ver sección de arriba).
+- [x] Exportar/importar los datos de una cuenta: botones "Exportar datos" / "Importar datos" en la barra lateral. Ya no hace falta para el uso normal (los datos se sincronizan solos), se deja como copia de seguridad manual descargable en `.json`.
+- [ ] Panel de administrador dentro de la propia app (hoy se usa el dashboard de Supabase como sustituto) — solo necesario si algún día hace falta gestionar usuarios sin salir de la app.
 
 **Calendario semanal (Módulo 4)**
 - [ ] Sigue siendo una semana de ejemplo fija: falta poder editarlo, moverse entre semanas, y arrastrar ejercicios a un día concreto.
