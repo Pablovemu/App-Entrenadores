@@ -4,6 +4,11 @@ App de gestión para entrenadores de fútbol: plantilla, pizarra táctica, gener
 
 Este documento resume dónde está el proyecto ahora mismo, qué falta por hacer, y los pasos para seguir trabajando en Claude Code, subirlo a GitHub y desplegarlo en Netlify.
 
+**Ya está en producción:**
+- App pública: https://oficinaentrenadores.netlify.app
+- Repo GitHub: https://github.com/Pablovemu/App-Entrenadores (rama `main`, cada `git push` redespliega solo)
+- Backend: proyecto Supabase (URL y clave pública en `js/app.js`; credenciales de acceso al dashboard de Supabase las tiene Pablo)
+
 ## Estructura del proyecto
 
 ```
@@ -17,7 +22,8 @@ oficina-entrenador-app/
 ├── tailwind.config.js     # Paleta de colores y tipografías del tema
 ├── package.json           # Script para regenerar css/styles.css
 ├── netlify.toml           # Configuración de despliegue en Netlify
-├── supabase_schema.sql    # Tablas + Row Level Security a ejecutar una vez en Supabase
+├── supabase_schema.sql                       # Tablas base + RLS (ejecutar primero, una vez)
+├── supabase_migration_02_admin_and_match.sql # Partido en Vivo persistente + panel de admin (ejecutar después)
 └── .gitignore
 ```
 
@@ -53,7 +59,7 @@ Hay también `npm run css:watch` para que se regenere automáticamente mientras 
 2. **Gestión de Plantilla** ✅ — Alta/baja de jugadores (nombre, dorsal, posición), con persistencia.
 3. **Pizarra Táctica** ✅ — Campo con 22 fichas + balón, arrastrables (funciona con ratón y con dedo/tablet), dibujo de líneas/flechas en 3 colores, botón reiniciar. Con persistencia.
 4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros y alta/baja. Calendario semanal de ejemplo (fijo, sin edición todavía). Con persistencia de ejercicios.
-5. **Gestión de Minutos y Partido** ✅ — Cronómetro, alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. **Sin persistencia** (ver nota abajo): corre solo en memoria del dispositivo, se reinicia al recargar la página.
+5. **Gestión de Minutos y Partido** ✅ — Cronómetro, alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. Con persistencia (tabla `match_state`): sobrevive a un refresco de página, aunque siempre queda en pausa al recargar (hay que pulsar "Reanudar").
 6. **Scouting y Rival** ✅ — Notas del rival con autoguardado, lista de seguimiento de fichajes con alta/baja.
 
 ### Cuentas de usuario y backend (Supabase)
@@ -63,11 +69,26 @@ Hay una pantalla de acceso (usuario + contraseña) respaldada por **Supabase Aut
 - **Contraseñas cifradas de verdad**, gestionadas por Supabase (no las ve ni las guarda esta app en texto plano).
 - **Los datos viajan entre dispositivos.** Un mismo usuario ve la misma plantilla/pizarra/entrenamientos/scouting tanto desde el móvil como desde el ordenador, porque todo vive en una base de datos (Postgres) en vez de en el navegador.
 - **Row Level Security**: cada usuario solo puede leer/escribir sus propias filas (reglas definidas en `supabase_schema.sql`), aunque las claves del cliente sean públicas.
-- **Panel de administrador = panel de Supabase.** No hay una pantalla de "admin" dentro de la app; el propietario del proyecto ve y gestiona todas las cuentas desde el propio dashboard de Supabase:
-  - **Authentication → Users**: lista de todos los usuarios registrados (borrar cuentas, resetear contraseñas, etc.).
-  - **Table Editor**: contenido de `players`, `pizarra`, `exercises`, `scouting_rival`, `scouting_targets` de cualquier usuario.
 - Como el login es por **usuario** (no email real), internamente se construye un email ficticio `usuario@users.oficinaentrenadores.app` solo para que Supabase Auth tenga algo con formato de email — el usuario nunca lo ve ni lo necesita.
-- El módulo de **Partido en Vivo** sigue sin guardar nada (decisión explícita para no complicar el cronómetro en tiempo real): si recargas a mitad de partido, se reinicia.
+
+### Panel de administrador (dentro de la app)
+
+Item de menú **"Panel Admin"**, solo visible si la cuenta tiene `is_admin = true` en la tabla `profiles` (ver `supabase_migration_02_admin_and_match.sql`). Desde ahí se ve la lista de todas las cuentas registradas (usuario, fecha de alta, nº de jugadores) y se puede **vaciar los datos** de un equipo (plantilla, pizarra, entrenamientos, scouting, partido) con un botón.
+
+- Técnicamente funciona con una función SQL `is_admin_user()` (SECURITY DEFINER) y políticas RLS adicionales que dejan a los admins ver/borrar filas de cualquier usuario en las tablas de datos.
+- **Limitación a propósito**: el panel NO puede borrar la cuenta de acceso en sí (usuario + contraseña) — eso requiere la clave secreta `service_role` de Supabase, que nunca debe ir en el código de un sitio estático. Para eso sigue haciendo falta el dashboard de Supabase: **Authentication → Users → borrar**.
+- Para marcar una cuenta como admin (solo se puede hacer desde el SQL Editor de Supabase, no desde la app):
+  ```sql
+  update profiles set is_admin = true where username = 'nombre_de_usuario';
+  ```
+- Si una cuenta se registró **antes** de ejecutar `supabase_migration_02_admin_and_match.sql`, no tendrá fila en `profiles` y ese UPDATE no hará nada (0 filas). Para esos casos, crear el perfil a mano:
+  ```sql
+  insert into profiles (user_id, username, is_admin)
+  select id, 'nombre_de_usuario', true
+  from auth.users
+  where email = 'nombre_de_usuario@users.oficinaentrenadores.app'
+  on conflict (user_id) do update set is_admin = true;
+  ```
 
 **Configuración de Supabase que hay que mantener** (Authentication → Sign In / Providers → Email, en el proyecto Supabase):
 - **Enable email provider**: activado.
@@ -78,15 +99,16 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
 ## Pendiente / lista de mejoras
 
 **Cuentas y datos**
-- [x] Backend real con Supabase: cuentas cifradas, sincronización entre dispositivos, y gestión de usuarios desde el panel de Supabase (ver sección de arriba).
+- [x] Backend real con Supabase: cuentas cifradas, sincronización entre dispositivos.
 - [x] Exportar/importar los datos de una cuenta: botones "Exportar datos" / "Importar datos" en la barra lateral. Ya no hace falta para el uso normal (los datos se sincronizan solos), se deja como copia de seguridad manual descargable en `.json`.
-- [ ] Panel de administrador dentro de la propia app (hoy se usa el dashboard de Supabase como sustituto) — solo necesario si algún día hace falta gestionar usuarios sin salir de la app.
+- [x] Panel de administrador dentro de la propia app (ver sección de arriba) — ver cuentas y vaciar datos de un equipo.
+- [ ] Borrar la cuenta de acceso (login) también desde el panel de admin de la app, sin pasar por Supabase — requeriría una Netlify Function que guarde la clave `service_role` de forma segura en el servidor (no en el navegador). Se decidió no hacerlo todavía: con pocos usuarios, borrar a mano en Supabase es más rápido que montar esa infraestructura. Reconsiderar si el borrado de cuentas se vuelve frecuente.
 
 **Calendario semanal (Módulo 4)**
 - [ ] Sigue siendo una semana de ejemplo fija: falta poder editarlo, moverse entre semanas, y arrastrar ejercicios a un día concreto.
 
 **Partido (Módulo 5)**
-- [ ] Decidir y construir la persistencia (ver arriba).
+- [x] Persistencia añadida (tabla `match_state`, ver arriba).
 - [ ] El botón de 1ª/2ª parte es solo una etiqueta manual, no corta el cronómetro automáticamente.
 - [ ] No hay marcador de goles/tarjetas ni histórico de partidos pasados.
 
@@ -119,6 +141,8 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
 
 ## Cómo subirlo a GitHub
 
+*(Ya hecho — el repo vive en https://github.com/Pablovemu/App-Entrenadores. Esta sección queda como referencia por si hay que repetirlo alguna vez.)*
+
 1. Crea un repositorio nuevo y vacío en GitHub (botón "New repository"), sin inicializarlo con README ni licencia (para no chocar con lo que ya tienes).
 2. En la terminal, dentro de la carpeta del proyecto:
    ```bash
@@ -138,6 +162,8 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
    ```
 
 ## Cómo desplegarlo en Netlify
+
+*(Ya hecho — el sitio vive en https://oficinaentrenadores.netlify.app, conectado a GitHub, con visibilidad "Public" en Project visibility. Esta sección queda como referencia.)*
 
 Hay dos formas, de más sencilla a más potente:
 
