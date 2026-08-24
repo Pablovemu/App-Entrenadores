@@ -25,7 +25,8 @@ oficina-entrenador-app/
 ├── supabase_schema.sql                       # Tablas base + RLS (ejecutar primero, una vez)
 ├── supabase_migration_02_admin_and_match.sql # Partido en Vivo persistente + panel de admin (ejecutar después)
 ├── supabase_migration_03_stats_calendar_match.sql # Formato F7/F11, calendario real, asistencia e histórico de partidos
-├── supabase_migration_04_match_duration.sql   # Duración del partido, para el % de minutos disputados (ejecutar el último)
+├── supabase_migration_04_match_duration.sql   # Duración del partido, para el % de minutos disputados
+├── supabase_migration_05_session_items.sql    # Plan de sesión por bloques y ejercicios (ejecutar el último)
 └── .gitignore
 ```
 
@@ -60,7 +61,7 @@ Hay también `npm run css:watch` para que se regenere automáticamente mientras 
 1. **Base y Navegación** ✅ — Menú lateral oscuro/verde césped con indicador de sección activa. Incluye un selector de **formato de equipo** (Fútbol 7 / Fútbol 11) que afecta a la Pizarra y al Partido en Vivo (ver más abajo).
 2. **Gestión de Plantilla** ✅ — Alta/baja de jugadores (nombre, dorsal, posición), con persistencia. Al pulsar sobre un jugador se abre su **ficha de estadísticas de temporada**: goles, minutos jugados (+ % sobre el total de minutos disputados por el equipo), tarjetas, y asistencia a entrenamientos **desglosada semana a semana** (para poder comprobar exactamente qué día faltó, no solo un total).
 3. **Pizarra Táctica** ✅ — Campo con fichas + balón, arrastrables (funciona con ratón y con dedo/tablet), dibujo de líneas/flechas en 3 colores, botón reiniciar. La formación es de 11 vs 11 o 7 vs 7 según el formato de equipo elegido. Con persistencia.
-4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros y alta/baja. **Calendario semanal real**, navegable semana a semana: se pueden crear sesiones en un día concreto (o arrastrar una tarjeta de ejercicio hasta el día), y cada sesión permite pasar lista de **asistencia a entrenamientos** jugador por jugador.
+4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros y alta/baja. **Calendario semanal real**, navegable semana a semana: se pueden crear sesiones en un día concreto (o arrastrar una tarjeta de ejercicio hasta el día), y cada sesión permite pasar lista de **asistencia a entrenamientos** jugador por jugador. Cada sesión es ahora un **plan por bloques** (Calentamiento / Principal / Vuelta a la calma) con varios ejercicios ordenados —de la biblioteca o personalizados— y su duración; el plan se puede editar después de creado.
 5. **Gestión de Minutos y Partido** ✅ — Datos del partido (rival y fecha), **marcador de goles** (con autor cuando es de nuestro equipo), **tarjetas amarillas/rojas** (con el jugador al que se le muestran), cronómetro con partes (2 en Fútbol 11, 4 en Fútbol 7), alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. El partido en curso persiste (tabla `match_state`) y sobrevive a un refresco de página (siempre queda en pausa al recargar, hay que pulsar "Reanudar"). Al pulsar **"Finalizar partido"** se guarda en el histórico (tabla `matches`), que es de donde salen las estadísticas de la ficha de cada jugador. Hay una nueva pantalla **"Historial de Partidos"** con la lista de partidos guardados (rival, fecha, resultado) y, al abrir uno, quién jugó de titular/suplente, minutos, goles y tarjetas de cada jugador.
 6. **Scouting y Rival** ✅ — Notas del rival con autoguardado, lista de seguimiento de fichajes con alta/baja.
 

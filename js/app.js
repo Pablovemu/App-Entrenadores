@@ -836,19 +836,28 @@
         const exerciseId = Number(e.dataTransfer.getData('text/exercise-id'));
         const exercise = exercises.find(ex => ex.id === exerciseId);
         if (!exercise) return;
-        await createSession({ session_date: iso, time: '18:00', label: exercise.name, category: exercise.category, exercise_id: exercise.id });
+        const parsedMin = exercise.duration ? parseInt(exercise.duration, 10) : null;
+        await createSession({
+          session_date: iso, time: '18:00', label: exercise.name, category: exercise.category,
+          items: [{ position: 0, block: 'Principal', exercise_id: exercise.id, name: exercise.name, duration_minutes: Number.isFinite(parsedMin) ? parsedMin : null }],
+        });
       });
       calendarGrid.appendChild(col);
     }
   }
 
-  async function createSession({ session_date, time, label, category, exercise_id }) {
+  async function createSession({ session_date, time, label, category, items }) {
     const { data, error } = await db.from('training_sessions')
-      .insert({ user_id: currentUser.id, session_date, time, label, category, exercise_id: exercise_id || null })
+      .insert({ user_id: currentUser.id, session_date, time, label, category })
       .select()
       .single();
     if (error) { console.error(error); alert('No se pudo crear la sesión.'); return; }
     weekSessions.push(data);
+    if (items && items.length) {
+      const { error: itemsError } = await db.from('session_items')
+        .insert(items.map(it => ({ ...it, user_id: currentUser.id, session_id: data.id })));
+      if (itemsError) console.error('No se pudieron guardar los ejercicios de la sesión:', itemsError);
+    }
     renderCalendar();
   }
 
@@ -869,18 +878,119 @@
   document.getElementById('btn-week-next').addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, 7); loadWeekSessions(); });
   document.getElementById('btn-week-today').addEventListener('click', () => { currentWeekStart = mondayOf(new Date()); loadWeekSessions(); });
 
-  // ---- Modal: nueva sesión ----
+  // ---- Modal: nueva/editar sesión, con plan de ejercicios por bloques ----
   const sessionModalBackdrop = document.getElementById('session-modal-backdrop');
   const sessionForm = document.getElementById('form-add-session');
+  const sessionItemsListEl = document.getElementById('session-items-list');
+  const SESSION_BLOCKS = ['Calentamiento', 'Principal', 'Vuelta a la calma'];
+  let sessionItemsDraft = []; // [{ block, exerciseId, name, duration }]
+
+  function updateSessionItemsTotalLabel() {
+    const totalMin = sessionItemsDraft.reduce((s, it) => s + (Number(it.duration) || 0), 0);
+    document.getElementById('session-items-total').textContent =
+      `${sessionItemsDraft.length} ejercicio${sessionItemsDraft.length === 1 ? '' : 's'} · ${totalMin} min`;
+  }
+
+  function renderSessionItemsDraft() {
+    sessionItemsListEl.innerHTML = '';
+    sessionItemsDraft.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'bg-card border border-border rounded-lg p-3';
+      const exerciseOptions = exercises.map(ex =>
+        `<option value="${ex.id}" ${item.exerciseId === ex.id ? 'selected' : ''}>${escapeHtml(ex.name)}</option>`).join('');
+      row.innerHTML = `
+        <div class="flex items-center gap-2 mb-2">
+          <select data-item-field="block" data-item-idx="${idx}" class="session-item-field bg-night border border-border rounded-lg px-2 py-1.5 text-xs text-ink">
+            ${SESSION_BLOCKS.map(b => `<option value="${b}" ${item.block === b ? 'selected' : ''}>${b}</option>`).join('')}
+          </select>
+          <span class="flex-1"></span>
+          <button type="button" data-remove-item="${idx}" class="btn-remove-session-item text-muted hover:text-red-400 p-1">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="grid grid-cols-[1fr_90px] gap-2 ${item.exerciseId ? '' : 'mb-2'}">
+          <select data-item-field="exerciseId" data-item-idx="${idx}" class="session-item-field bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">
+            <option value="" ${!item.exerciseId ? 'selected' : ''}>Personalizado…</option>
+            ${exerciseOptions}
+          </select>
+          <input data-item-field="duration" data-item-idx="${idx}" type="number" min="0" value="${item.duration || ''}" placeholder="min" class="session-item-field bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">
+        </div>
+        ${!item.exerciseId ? `<input data-item-field="name" data-item-idx="${idx}" type="text" value="${escapeHtml(item.name || '')}" placeholder="Nombre del ejercicio" class="session-item-field w-full bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">` : ''}
+      `;
+      sessionItemsListEl.appendChild(row);
+    });
+    updateSessionItemsTotalLabel();
+  }
+
+  sessionItemsListEl.addEventListener('change', (e) => {
+    const field = e.target.closest('.session-item-field');
+    if (!field) return;
+    const item = sessionItemsDraft[Number(field.dataset.itemIdx)];
+    if (!item) return;
+    const key = field.dataset.itemField;
+    if (key === 'exerciseId') {
+      const exId = field.value ? Number(field.value) : null;
+      item.exerciseId = exId;
+      if (exId) {
+        const ex = exercises.find(x => x.id === exId);
+        if (ex) {
+          item.name = ex.name;
+          const parsedMin = ex.duration ? parseInt(ex.duration, 10) : null;
+          if (Number.isFinite(parsedMin)) item.duration = parsedMin;
+        }
+      }
+      renderSessionItemsDraft();
+      return;
+    }
+    if (key === 'duration') item.duration = field.value ? Number(field.value) : null;
+    else if (key === 'block') item.block = field.value;
+    else if (key === 'name') item.name = field.value;
+    updateSessionItemsTotalLabel();
+  });
+
+  sessionItemsListEl.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-remove-session-item');
+    if (!btn) return;
+    sessionItemsDraft.splice(Number(btn.dataset.removeItem), 1);
+    renderSessionItemsDraft();
+  });
+
+  document.getElementById('btn-add-session-item').addEventListener('click', () => {
+    const lastBlock = sessionItemsDraft.length ? sessionItemsDraft[sessionItemsDraft.length - 1].block : 'Principal';
+    sessionItemsDraft.push({ block: lastBlock, exerciseId: null, name: '', duration: null });
+    renderSessionItemsDraft();
+  });
 
   function openSessionModal(iso) {
+    document.getElementById('session-modal-title').textContent = 'Nueva sesión';
+    document.getElementById('input-session-editing-id').value = '';
     document.getElementById('input-session-date').value = iso;
-    const exerciseSelect = document.getElementById('input-session-exercise');
-    exerciseSelect.innerHTML = '<option value="">— Ninguno —</option>' +
-      exercises.map(ex => `<option value="${ex.id}">${escapeHtml(ex.name)}</option>`).join('');
+    document.getElementById('input-session-label').value = '';
+    document.getElementById('input-session-category').value = 'Táctico';
+    document.getElementById('input-session-time').value = '18:00';
+    sessionItemsDraft = [];
+    renderSessionItemsDraft();
     sessionModalBackdrop.classList.remove('hidden');
     sessionModalBackdrop.classList.add('flex');
   }
+
+  async function openSessionModalForEdit(sessionId) {
+    const session = weekSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    document.getElementById('session-modal-title').textContent = 'Editar sesión';
+    document.getElementById('input-session-editing-id').value = sessionId;
+    document.getElementById('input-session-date').value = session.session_date;
+    document.getElementById('input-session-label').value = session.label;
+    document.getElementById('input-session-category').value = session.category;
+    document.getElementById('input-session-time').value = session.time || '18:00';
+    const { data: items, error } = await db.from('session_items').select('*').eq('session_id', sessionId).order('position', { ascending: true });
+    if (error) console.error('No se pudieron cargar los ejercicios de la sesión:', error);
+    sessionItemsDraft = (items || []).map(it => ({ block: it.block, exerciseId: it.exercise_id, name: it.name, duration: it.duration_minutes }));
+    renderSessionItemsDraft();
+    sessionModalBackdrop.classList.remove('hidden');
+    sessionModalBackdrop.classList.add('flex');
+  }
+
   function closeSessionModal() {
     sessionModalBackdrop.classList.add('hidden');
     sessionModalBackdrop.classList.remove('flex');
@@ -896,15 +1006,74 @@
     const label = document.getElementById('input-session-label').value.trim();
     const category = document.getElementById('input-session-category').value;
     const time = document.getElementById('input-session-time').value;
-    const exerciseId = document.getElementById('input-session-exercise').value;
+    const editingId = document.getElementById('input-session-editing-id').value;
     if (!label || !session_date) return;
-    await createSession({ session_date, time, label, category, exercise_id: exerciseId ? Number(exerciseId) : null });
+
+    const items = sessionItemsDraft
+      .filter(it => it.exerciseId || (it.name && it.name.trim()))
+      .map((it, idx) => ({
+        position: idx,
+        block: it.block || 'Principal',
+        exercise_id: it.exerciseId || null,
+        name: (it.exerciseId ? exercises.find(ex => ex.id === it.exerciseId)?.name : it.name) || 'Ejercicio',
+        duration_minutes: it.duration ? Number(it.duration) : null,
+      }));
+
+    if (editingId) {
+      const sessionId = Number(editingId);
+      const { error: updateError } = await db.from('training_sessions').update({ label, category, time, session_date }).eq('id', sessionId);
+      if (updateError) { console.error(updateError); alert('No se pudo actualizar la sesión.'); return; }
+      const { error: delError } = await db.from('session_items').delete().eq('session_id', sessionId);
+      if (delError) console.error('No se pudieron limpiar los ejercicios anteriores de la sesión:', delError);
+      if (items.length) {
+        const { error: insError } = await db.from('session_items')
+          .insert(items.map(it => ({ ...it, user_id: currentUser.id, session_id: sessionId })));
+        if (insError) console.error('No se pudieron guardar los ejercicios de la sesión:', insError);
+      }
+      const idx = weekSessions.findIndex(s => s.id === sessionId);
+      if (idx !== -1) weekSessions[idx] = { ...weekSessions[idx], label, category, time, session_date };
+      renderCalendar();
+    } else {
+      await createSession({ session_date, time, label, category, items });
+    }
     closeSessionModal();
   });
 
   // ---- Modal: detalle de sesión + asistencia ----
   const sessionDetailBackdrop = document.getElementById('session-detail-modal-backdrop');
   let currentSessionId = null;
+
+  function renderSessionDetailPlan(items) {
+    const planEl = document.getElementById('session-detail-plan');
+    planEl.innerHTML = '';
+    if (!items.length) {
+      planEl.innerHTML = '<p class="text-xs text-muted">Sin ejercicios añadidos todavía.</p>';
+      return;
+    }
+    const totalMin = items.reduce((s, it) => s + (it.duration_minutes || 0), 0);
+    const totalP = document.createElement('p');
+    totalP.className = 'text-xs text-muted mb-2';
+    totalP.textContent = `${items.length} ejercicio${items.length === 1 ? '' : 's'} · ${totalMin} min en total`;
+    planEl.appendChild(totalP);
+
+    let lastBlock = null;
+    items.forEach(it => {
+      if (it.block !== lastBlock) {
+        lastBlock = it.block;
+        const header = document.createElement('p');
+        header.className = 'text-xs uppercase tracking-wide text-turf font-display font-600 mt-2 mb-1';
+        header.textContent = it.block;
+        planEl.appendChild(header);
+      }
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-1.5 text-sm';
+      row.innerHTML = `
+        <span class="flex-1 min-w-0 truncate">${escapeHtml(it.name)}</span>
+        ${it.duration_minutes ? `<span class="text-xs text-muted shrink-0">${it.duration_minutes} min</span>` : ''}
+      `;
+      planEl.appendChild(row);
+    });
+  }
 
   async function openSessionDetail(sessionId) {
     const session = weekSessions.find(s => s.id === sessionId);
@@ -916,11 +1085,18 @@
 
     const list = document.getElementById('session-detail-attendance');
     list.innerHTML = '<p class="text-xs text-muted">Cargando…</p>';
+    document.getElementById('session-detail-plan').innerHTML = '<p class="text-xs text-muted">Cargando…</p>';
     sessionDetailBackdrop.classList.remove('hidden');
     sessionDetailBackdrop.classList.add('flex');
 
-    const { data: attendance, error } = await db.from('training_attendance').select('*').eq('session_id', sessionId);
-    if (error) console.error('No se pudo cargar la asistencia:', error);
+    const [{ data: items, error: itemsError }, { data: attendance, error: attError }] = await Promise.all([
+      db.from('session_items').select('*').eq('session_id', sessionId).order('position', { ascending: true }),
+      db.from('training_attendance').select('*').eq('session_id', sessionId),
+    ]);
+    if (itemsError) console.error('No se pudieron cargar los ejercicios de la sesión:', itemsError);
+    if (attError) console.error('No se pudo cargar la asistencia:', attError);
+    renderSessionDetailPlan(items || []);
+
     const attendanceMap = {};
     (attendance || []).forEach(a => { attendanceMap[a.player_id] = a; });
 
@@ -965,6 +1141,13 @@
   }
   document.getElementById('session-detail-close').addEventListener('click', closeSessionDetailModal);
   sessionDetailBackdrop.addEventListener('click', (e) => { if (e.target === sessionDetailBackdrop) closeSessionDetailModal(); });
+
+  document.getElementById('btn-edit-session').addEventListener('click', () => {
+    if (!currentSessionId) return;
+    const sessionId = currentSessionId;
+    closeSessionDetailModal();
+    openSessionModalForEdit(sessionId);
+  });
 
   document.getElementById('btn-delete-session').addEventListener('click', async () => {
     if (!currentSessionId) return;
@@ -1814,7 +1997,7 @@
       `Esto borrará TODA la plantilla, pizarra, entrenamientos y scouting de "${username}". La cuenta de acceso no se borra (eso se hace desde Supabase). ¿Continuar?`
     );
     if (!confirmed) return;
-    const tables = ['players', 'pizarra', 'exercises', 'scouting_rival', 'scouting_targets', 'match_state', 'matches', 'training_sessions', 'training_attendance'];
+    const tables = ['players', 'pizarra', 'exercises', 'scouting_rival', 'scouting_targets', 'match_state', 'matches', 'training_sessions', 'training_attendance', 'session_items'];
     for (const table of tables) {
       const { error } = await db.from(table).delete().eq('user_id', userId);
       if (error) console.error(`No se pudo borrar ${table} para ${username}:`, error);

@@ -355,19 +355,20 @@
         </div>
       </section>
 
-      <!-- ============ MODAL: NUEVA SESIÓN DE ENTRENAMIENTO ============ -->
+      <!-- ============ MODAL: NUEVA/EDITAR SESIÓN DE ENTRENAMIENTO ============ -->
       <div id="session-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
-        <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
+        <div class="bg-panel border border-border rounded-xl w-full max-w-lg p-6 max-h-[88vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-5">
-            <h2 class="font-display font-700 text-xl uppercase">Nueva sesión</h2>
+            <h2 id="session-modal-title" class="font-display font-700 text-xl uppercase">Nueva sesión</h2>
             <button id="session-modal-close" class="text-muted hover:text-ink">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
           <form id="form-add-session" class="space-y-4">
             <input type="hidden" id="input-session-date">
+            <input type="hidden" id="input-session-editing-id">
             <div>
-              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Título</label>
+              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Título de la sesión</label>
               <input id="input-session-label" type="text" required class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
             </div>
             <div class="grid grid-cols-2 gap-3">
@@ -385,15 +386,22 @@
                 <input id="input-session-time" type="time" value="18:00" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
               </div>
             </div>
-            <div>
-              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Ejercicio vinculado (opcional)</label>
-              <select id="input-session-exercise" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
-                <option value="">— Ninguno —</option>
-              </select>
+
+            <div class="border-t border-border pt-4">
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs uppercase tracking-wide text-muted">Plan de la sesión</p>
+                <p id="session-items-total" class="text-xs text-muted">0 ejercicios · 0 min</p>
+              </div>
+              <div id="session-items-list" class="space-y-2 mb-3"></div>
+              <button type="button" id="btn-add-session-item" class="flex items-center gap-2 border border-border hover:border-turf/50 text-ink font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+                Añadir ejercicio
+              </button>
             </div>
+
             <div class="flex gap-3 pt-2">
               <button type="button" id="session-modal-cancel" class="flex-1 border border-border rounded-lg py-2.5 font-display font-600 uppercase text-sm tracking-wide text-muted hover:text-ink hover:bg-card transition-colors">Cancelar</button>
-              <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
+              <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar sesión</button>
             </div>
           </form>
         </div>
@@ -401,7 +409,7 @@
 
       <!-- ============ MODAL: DETALLE DE SESIÓN + ASISTENCIA ============ -->
       <div id="session-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
-        <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
+        <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6 max-h-[88vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-1">
             <h2 id="session-detail-title" class="font-display font-700 text-xl uppercase">—</h2>
             <button id="session-detail-close" class="text-muted hover:text-ink">
@@ -409,6 +417,13 @@
             </button>
           </div>
           <p id="session-detail-meta" class="text-xs text-muted mb-4">—</p>
+
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs uppercase tracking-wide text-muted">Plan de la sesión</p>
+            <button id="btn-edit-session" type="button" class="text-xs text-turf hover:text-turfline font-display font-600 uppercase tracking-wide">Editar</button>
+          </div>
+          <div id="session-detail-plan" class="space-y-3 mb-4"></div>
+
           <p class="text-xs uppercase tracking-wide text-muted mb-2">Asistencia</p>
           <div id="session-detail-attendance" class="space-y-1.5 max-h-64 overflow-y-auto mb-4"></div>
           <button id="btn-delete-session" type="button" class="w-full border border-red-500/30 hover:bg-red-500/15 text-red-400 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
