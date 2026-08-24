@@ -152,6 +152,7 @@
     pizarra:         { eyebrow: 'Módulo · Táctica',   title: 'Pizarra Táctica' },
     entrenamientos:  { eyebrow: 'Módulo · Sesiones',  title: 'Entrenamientos' },
     partido:         { eyebrow: 'Módulo · Partido',   title: 'Partido en Vivo' },
+    historial:       { eyebrow: 'Módulo · Partido',   title: 'Historial de Partidos' },
     scouting:        { eyebrow: 'Módulo · Scouting',  title: 'Scouting y Rival' },
     admin:           { eyebrow: 'Administración',     title: 'Panel Admin' },
   };
@@ -185,6 +186,9 @@
     }
     if (key === 'admin') {
       loadAdminPanel();
+    }
+    if (key === 'historial') {
+      loadMatchHistory();
     }
   }
 
@@ -297,13 +301,13 @@
     playerStatsModalBackdrop.classList.add('flex');
 
     const [{ data: matchRows, error: matchesError }, { data: attendanceRows, error: attendanceError }] = await Promise.all([
-      db.from('matches').select('events, players'),
-      db.from('training_attendance').select('present').eq('player_id', player.id),
+      db.from('matches').select('events, players, duration_seconds'),
+      db.from('training_attendance').select('present, training_sessions(session_date, label)').eq('player_id', player.id),
     ]);
     if (matchesError) console.error('No se pudieron cargar los partidos:', matchesError);
     if (attendanceError) console.error('No se pudo cargar la asistencia:', attendanceError);
 
-    let goals = 0, yellows = 0, reds = 0, seconds = 0;
+    let goals = 0, yellows = 0, reds = 0, seconds = 0, totalMatchSeconds = 0;
     (matchRows || []).forEach(m => {
       (m.events || []).forEach(ev => {
         if (ev.playerId !== player.id || ev.team !== 'own') return;
@@ -313,18 +317,64 @@
       });
       const mp = (m.players || []).find(mp => mp.id === player.id);
       if (mp) seconds += mp.seconds || 0;
+      // Los partidos guardados antes de tener duration_seconds no cuentan
+      // en el % (no sabemos cuánto duró el partido), pero sí en goles/minutos.
+      if (m.duration_seconds) totalMatchSeconds += m.duration_seconds;
     });
-    const attendancePresent = (attendanceRows || []).filter(a => a.present).length;
-    const attendanceTotal = (attendanceRows || []).length;
+    const minutesPct = totalMatchSeconds ? Math.round((seconds / totalMatchSeconds) * 100) : 0;
+    const attendanceList = attendanceRows || [];
+    const attendancePresent = attendanceList.filter(a => a.present).length;
+    const attendanceTotal = attendanceList.length;
 
     document.getElementById('stat-player-goals').textContent = goals;
     document.getElementById('stat-player-minutes').textContent = Math.floor(seconds / 60);
+    document.getElementById('stat-player-minutes-pct').textContent = `${minutesPct}% de los minutos disputados`;
     document.getElementById('stat-player-cards').innerHTML =
       `<span class="text-gold">${yellows}</span> <span class="text-muted text-base">/</span> <span class="text-red-400">${reds}</span>`;
     document.getElementById('stat-player-attendance').textContent = `${attendancePresent} / ${attendanceTotal}`;
+    renderPlayerAttendanceByWeek(attendanceList);
 
     document.getElementById('player-stats-loading').classList.add('hidden');
     document.getElementById('player-stats-body').classList.remove('hidden');
+  }
+
+  function renderPlayerAttendanceByWeek(attendanceList) {
+    const list = document.getElementById('player-stats-attendance-list');
+    list.innerHTML = '';
+    const withDate = attendanceList.filter(a => a.training_sessions && a.training_sessions.session_date);
+    if (!withDate.length) {
+      list.innerHTML = '<p class="text-xs text-muted">Todavía no hay sesiones de entrenamiento registradas.</p>';
+      return;
+    }
+    const weeks = new Map();
+    withDate.forEach(a => {
+      const weekKey = dateStr(mondayOf(new Date(a.training_sessions.session_date + 'T00:00:00')));
+      if (!weeks.has(weekKey)) weeks.set(weekKey, []);
+      weeks.get(weekKey).push(a);
+    });
+    [...weeks.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .forEach(([weekKey, rows]) => {
+        const weekStart = new Date(weekKey + 'T00:00:00');
+        const weekEnd = addDays(weekStart, 6);
+        const header = document.createElement('p');
+        header.className = 'text-xs text-muted uppercase tracking-wide mt-2 mb-1';
+        header.textContent = `Semana del ${weekStart.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} al ${weekEnd.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
+        list.appendChild(header);
+        rows
+          .sort((a, b) => b.training_sessions.session_date.localeCompare(a.training_sessions.session_date))
+          .forEach(a => {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-1.5 text-sm';
+            const dateLabel = new Date(a.training_sessions.session_date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric', month: 'short' });
+            row.innerHTML = `
+              <span class="w-2 h-2 rounded-full shrink-0 ${a.present ? 'bg-turf' : 'bg-red-400'}"></span>
+              <span class="flex-1 min-w-0 truncate">${dateLabel}</span>
+              <span class="text-muted text-xs truncate">${escapeHtml(a.training_sessions.label || '')}</span>
+            `;
+            list.appendChild(row);
+          });
+      });
   }
 
   // ---------- Pizarra Táctica (Módulo 3) ----------
@@ -983,6 +1033,7 @@
       name: p.name,
       position: p.position,
       onField: i < starters,
+      starter: i < starters,
       seconds: 0,
     }));
     matchSeconds = 0;
@@ -1195,9 +1246,9 @@
     document.getElementById('select-card-player').innerHTML = `<option value="">Jugador…</option>${options}`;
   }
 
-  function computeScore() {
+  function scoreFromEvents(events) {
     let own = 0, rival = 0;
-    matchEvents.forEach(ev => {
+    (events || []).forEach(ev => {
       if (ev.type !== 'goal') return;
       if (ev.team === 'own') own++; else rival++;
     });
@@ -1205,7 +1256,7 @@
   }
 
   function renderMatchEvents() {
-    const { own, rival } = computeScore();
+    const { own, rival } = scoreFromEvents(matchEvents);
     document.getElementById('score-own').textContent = own;
     document.getElementById('score-rival').textContent = rival;
 
@@ -1302,10 +1353,136 @@
       periods: periodsForFormat(format),
       events: matchEvents,
       players: matchPlayers,
+      duration_seconds: matchSeconds,
     });
     if (error) { console.error(error); alert('No se pudo guardar el partido en el historial.'); return; }
     resetMatchUiToZero();
     await saveMatchState();
+    loadMatchHistory();
+  });
+
+  // ---------- Historial de Partidos ----------
+  let matchHistory = [];
+  let currentHistoryMatchId = null;
+  const historyGrid = document.getElementById('history-grid');
+  const historyCountEl = document.getElementById('history-count');
+  const matchHistoryModalBackdrop = document.getElementById('match-history-modal-backdrop');
+
+  async function loadMatchHistory() {
+    historyGrid.innerHTML = '<p class="text-sm text-muted">Cargando…</p>';
+    const { data, error } = await db.from('matches').select('*').order('match_date', { ascending: false });
+    if (error) { console.error('No se pudieron cargar los partidos:', error); matchHistory = []; }
+    else matchHistory = data;
+    renderMatchHistory();
+  }
+
+  function renderMatchHistory() {
+    historyCountEl.textContent = matchHistory.length;
+    historyGrid.innerHTML = '';
+    if (!matchHistory.length) {
+      historyGrid.innerHTML = '<p class="text-sm text-muted">Todavía no hay partidos finalizados. Se guardan aquí al pulsar "Finalizar partido" en Partido en Vivo.</p>';
+      return;
+    }
+    matchHistory.forEach(m => {
+      const { own, rival } = scoreFromEvents(m.events);
+      const card = document.createElement('div');
+      card.dataset.matchId = m.id;
+      card.className = 'btn-open-match cursor-pointer bg-card border border-border hover:border-turf/40 rounded-xl p-4 transition-colors';
+      card.innerHTML = `
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <p class="font-display font-700 text-lg truncate">${escapeHtml(m.rival || 'Rival sin nombre')}</p>
+          <span class="text-xs uppercase tracking-wide text-muted shrink-0">${m.format === 'F7' ? 'Fútbol 7' : 'Fútbol 11'}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <p class="font-display font-700 text-2xl"><span class="text-turf">${own}</span> <span class="text-muted text-base">—</span> <span>${rival}</span></p>
+          <p class="text-xs text-muted">${new Date(m.match_date + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+        </div>
+      `;
+      historyGrid.appendChild(card);
+    });
+  }
+
+  historyGrid.addEventListener('click', (e) => {
+    const card = e.target.closest('.btn-open-match');
+    if (!card) return;
+    openMatchHistoryDetail(Number(card.dataset.matchId));
+  });
+
+  function closeMatchHistoryModal() {
+    matchHistoryModalBackdrop.classList.add('hidden');
+    matchHistoryModalBackdrop.classList.remove('flex');
+    currentHistoryMatchId = null;
+  }
+  document.getElementById('history-detail-close').addEventListener('click', closeMatchHistoryModal);
+  matchHistoryModalBackdrop.addEventListener('click', (e) => { if (e.target === matchHistoryModalBackdrop) closeMatchHistoryModal(); });
+
+  function openMatchHistoryDetail(matchId) {
+    const m = matchHistory.find(x => x.id === matchId);
+    if (!m) return;
+    currentHistoryMatchId = matchId;
+    const { own, rival } = scoreFromEvents(m.events);
+    const hasStarterInfo = (m.players || []).some(p => typeof p.starter === 'boolean');
+
+    document.getElementById('history-detail-rival').textContent = m.rival || 'Rival sin nombre';
+    document.getElementById('history-detail-meta').textContent =
+      `${new Date(m.match_date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} · ${m.format === 'F7' ? 'Fútbol 7' : 'Fútbol 11'}${m.duration_seconds ? ' · ' + formatClock(m.duration_seconds) : ''}`;
+    document.getElementById('history-detail-score').innerHTML =
+      `<span class="text-turf">${own}</span> <span class="text-muted text-xl">—</span> <span>${rival}</span>`;
+
+    const playersList = document.getElementById('history-detail-players');
+    playersList.innerHTML = '';
+    (m.players || []).slice().sort((a, b) => a.number - b.number).forEach(p => {
+      const pGoals = (m.events || []).filter(ev => ev.playerId === p.id && ev.type === 'goal' && ev.team === 'own').length;
+      const pYellow = (m.events || []).filter(ev => ev.playerId === p.id && ev.type === 'yellow').length;
+      const pRed = (m.events || []).filter(ev => ev.playerId === p.id && ev.type === 'red').length;
+      const icons = [
+        pGoals ? `⚽×${pGoals}` : '',
+        pYellow ? `🟨×${pYellow}` : '',
+        pRed ? `🟥×${pRed}` : '',
+      ].filter(Boolean).join(' ');
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2';
+      row.innerHTML = `
+        <span class="w-7 h-7 shrink-0 rounded-full bg-night border border-border flex items-center justify-center font-display font-700 text-xs">${p.number}</span>
+        <span class="flex-1 min-w-0 truncate font-display font-600 text-sm">${escapeHtml(p.name)}</span>
+        ${hasStarterInfo ? `<span class="text-xs uppercase tracking-wide ${p.starter ? 'text-turf' : 'text-muted'} shrink-0">${p.starter ? 'Titular' : 'Suplente'}</span>` : ''}
+        <span class="text-xs text-muted tabular-nums shrink-0">${Math.floor((p.seconds || 0) / 60)}'</span>
+        <span class="text-xs shrink-0">${icons}</span>
+      `;
+      playersList.appendChild(row);
+    });
+
+    const eventsList = document.getElementById('history-detail-events');
+    eventsList.innerHTML = '';
+    const events = m.events || [];
+    if (!events.length) {
+      eventsList.innerHTML = '<p class="text-xs text-muted">Sin goles ni tarjetas en este partido.</p>';
+    } else {
+      events.slice().sort((a, b) => a.minute - b.minute).forEach(ev => {
+        const icon = ev.type === 'goal' ? '⚽' : ev.type === 'yellow' ? '🟨' : '🟥';
+        const label = ev.type === 'goal'
+          ? (ev.team === 'own' ? `Gol${ev.playerName ? ' — ' + escapeHtml(ev.playerName) : ''}` : 'Gol rival')
+          : `${ev.type === 'yellow' ? 'Amarilla' : 'Roja'} — ${escapeHtml(ev.playerName || '')}`;
+        const row = document.createElement('div');
+        row.className = 'flex items-center gap-2 bg-night/60 border border-border rounded-lg px-3 py-1.5 text-sm';
+        row.innerHTML = `<span class="text-xs text-muted tabular-nums w-9 shrink-0">${ev.minute}'</span><span class="flex-1 truncate">${icon} ${label}</span>`;
+        eventsList.appendChild(row);
+      });
+    }
+
+    matchHistoryModalBackdrop.classList.remove('hidden');
+    matchHistoryModalBackdrop.classList.add('flex');
+  }
+
+  document.getElementById('btn-delete-match-history').addEventListener('click', async () => {
+    if (!currentHistoryMatchId) return;
+    const confirmed = window.confirm('¿Eliminar este partido del historial? Esta acción no se puede deshacer.');
+    if (!confirmed) return;
+    const { error } = await db.from('matches').delete().eq('id', currentHistoryMatchId);
+    if (error) { console.error(error); alert('No se pudo eliminar el partido.'); return; }
+    matchHistory = matchHistory.filter(m => m.id !== currentHistoryMatchId);
+    renderMatchHistory();
+    closeMatchHistoryModal();
   });
 
   // ---------- Scouting y Rival (Módulo 6) ----------

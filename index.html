@@ -137,6 +137,12 @@
           </button>
         </li>
         <li>
+          <button data-screen="historial" class="nav-btn w-full flex items-center gap-4 pl-10 pr-3 py-3 rounded-lg text-left text-muted hover:text-ink hover:bg-card transition-colors">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13a9 9 0 1 0 2.13-6.36L3 8.5"/><path d="M12 8v5l3 2"/></svg>
+            <span class="label font-display font-600 uppercase text-sm">Historial de Partidos</span>
+          </button>
+        </li>
+        <li>
           <button data-screen="scouting" class="nav-btn w-full flex items-center gap-4 pl-10 pr-3 py-3 rounded-lg text-left text-muted hover:text-ink hover:bg-card transition-colors">
             <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="7.5" cy="15" r="3.3"/><circle cx="16.5" cy="15" r="3.3"/><path d="M10.6 14h2.8M8.5 11.8 10 6.5h4l1.5 5.3"/></svg>
             <span class="label font-display font-600 uppercase text-sm">Scouting y Rival</span>
@@ -545,6 +551,38 @@
         </div>
       </section>
 
+      <!-- ---------- SCREEN: HISTORIAL DE PARTIDOS ---------- -->
+      <section id="screen-historial" class="screen">
+        <div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
+          <span class="text-sm text-muted"><span id="history-count">0</span> partidos guardados</span>
+        </div>
+        <div id="history-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- ============ MODAL: DETALLE DE PARTIDO (HISTORIAL) ============ -->
+      <div id="match-history-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+        <div class="bg-panel border border-border rounded-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto">
+          <div class="flex items-center justify-between mb-1">
+            <h2 id="history-detail-rival" class="font-display font-700 text-xl uppercase truncate">—</h2>
+            <button id="history-detail-close" class="text-muted hover:text-ink shrink-0">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <p id="history-detail-meta" class="text-xs text-muted mb-1">—</p>
+          <p id="history-detail-score" class="font-display font-700 text-3xl mb-4">0 — 0</p>
+
+          <p class="text-xs uppercase tracking-wide text-muted mb-2">Alineación y minutos</p>
+          <div id="history-detail-players" class="space-y-1.5 mb-4"></div>
+
+          <p class="text-xs uppercase tracking-wide text-muted mb-2">Goles y tarjetas</p>
+          <div id="history-detail-events" class="space-y-1.5 mb-4"></div>
+
+          <button id="btn-delete-match-history" type="button" class="w-full border border-red-500/30 hover:bg-red-500/15 text-red-400 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+            Eliminar partido del historial
+          </button>
+        </div>
+      </div>
+
       <!-- ---------- SCREEN: SCOUTING Y RIVAL (Módulo 6) ---------- -->
       <section id="screen-scouting" class="screen">
 
@@ -646,23 +684,29 @@
         </button>
       </div>
       <p id="player-stats-loading" class="text-sm text-muted">Cargando estadísticas…</p>
-      <div id="player-stats-body" class="hidden grid grid-cols-2 gap-3">
-        <div class="bg-card border border-border rounded-xl p-4">
-          <p class="text-xs uppercase tracking-wide text-muted mb-1">Goles (temporada)</p>
-          <p id="stat-player-goals" class="font-display font-700 text-2xl text-turf">0</p>
+      <div id="player-stats-body" class="hidden">
+        <div class="grid grid-cols-2 gap-3 mb-2">
+          <div class="bg-card border border-border rounded-xl p-4">
+            <p class="text-xs uppercase tracking-wide text-muted mb-1">Goles (temporada)</p>
+            <p id="stat-player-goals" class="font-display font-700 text-2xl text-turf">0</p>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4">
+            <p class="text-xs uppercase tracking-wide text-muted mb-1">Minutos jugados</p>
+            <p id="stat-player-minutes" class="font-display font-700 text-2xl">0</p>
+            <p id="stat-player-minutes-pct" class="text-xs text-muted mt-0.5">0% de los minutos disputados</p>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4">
+            <p class="text-xs uppercase tracking-wide text-muted mb-1">Tarjetas (A / R)</p>
+            <p id="stat-player-cards" class="font-display font-700 text-2xl"><span class="text-gold">0</span> <span class="text-muted text-base">/</span> <span class="text-red-400">0</span></p>
+          </div>
+          <div class="bg-card border border-border rounded-xl p-4">
+            <p class="text-xs uppercase tracking-wide text-muted mb-1">Asistencia entrenos</p>
+            <p id="stat-player-attendance" class="font-display font-700 text-2xl">0 / 0</p>
+          </div>
         </div>
-        <div class="bg-card border border-border rounded-xl p-4">
-          <p class="text-xs uppercase tracking-wide text-muted mb-1">Minutos jugados</p>
-          <p id="stat-player-minutes" class="font-display font-700 text-2xl">0</p>
-        </div>
-        <div class="bg-card border border-border rounded-xl p-4">
-          <p class="text-xs uppercase tracking-wide text-muted mb-1">Tarjetas (A / R)</p>
-          <p id="stat-player-cards" class="font-display font-700 text-2xl"><span class="text-gold">0</span> <span class="text-muted text-base">/</span> <span class="text-red-400">0</span></p>
-        </div>
-        <div class="bg-card border border-border rounded-xl p-4">
-          <p class="text-xs uppercase tracking-wide text-muted mb-1">Asistencia entrenos</p>
-          <p id="stat-player-attendance" class="font-display font-700 text-2xl">0 / 0</p>
-        </div>
+
+        <p class="text-xs uppercase tracking-wide text-muted mb-2 mt-4">Asistencia por semana</p>
+        <div id="player-stats-attendance-list" class="space-y-2 max-h-56 overflow-y-auto"></div>
       </div>
     </div>
   </div>
