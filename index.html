@@ -10,7 +10,7 @@
      tras añadir clases nuevas al HTML). -->
 <link rel="stylesheet" href="css/styles.css">
 </head>
-<body class="bg-base text-ink font-body min-h-screen">
+<body class="bg-night text-ink font-body min-h-screen">
 
   <!-- ============ PANTALLA DE ACCESO ============ -->
   <div id="auth-screen" class="min-h-screen flex items-center justify-center px-4 pitchbg">
@@ -24,7 +24,7 @@
 
       <div class="bg-panel border border-border rounded-xl p-6">
         <div class="flex mb-6 rounded-lg border border-border overflow-hidden">
-          <button id="auth-tab-login" class="auth-tab flex-1 py-2.5 text-sm font-display font-600 uppercase tracking-wide bg-turf text-base transition-colors">Entrar</button>
+          <button id="auth-tab-login" class="auth-tab flex-1 py-2.5 text-sm font-display font-600 uppercase tracking-wide bg-turf text-night transition-colors">Entrar</button>
           <button id="auth-tab-register" class="auth-tab flex-1 py-2.5 text-sm font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Crear cuenta</button>
         </div>
 
@@ -39,7 +39,7 @@
             <input id="login-password" type="password" autocomplete="current-password" required class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
           </div>
           <p id="login-error" class="hidden text-sm text-red-400"></p>
-          <button type="submit" class="w-full bg-turf hover:bg-turfline text-base rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Entrar</button>
+          <button type="submit" class="w-full bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Entrar</button>
         </form>
 
         <!-- Formulario de registro -->
@@ -53,7 +53,7 @@
             <input id="register-password" type="password" autocomplete="new-password" required minlength="6" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
           </div>
           <p id="register-error" class="hidden text-sm text-red-400"></p>
-          <button type="submit" class="w-full bg-turf hover:bg-turfline text-base rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Crear cuenta</button>
+          <button type="submit" class="w-full bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Crear cuenta</button>
         </form>
 
         <p class="text-xs text-muted mt-5 leading-relaxed">
@@ -154,6 +154,15 @@
     <div class="px-6 py-4 border-t border-border">
       <p class="text-xs text-muted mb-1">Sesión</p>
       <p id="current-username" class="font-display font-600 text-sm mb-3 truncate">—</p>
+
+      <div class="mb-4">
+        <p class="text-xs text-muted mb-1.5">Formato de equipo</p>
+        <div id="format-switch" class="flex rounded-lg border border-border overflow-hidden">
+          <button data-format="F7" type="button" class="format-btn flex-1 py-1.5 text-xs font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Fútbol 7</button>
+          <button data-format="F11" type="button" class="format-btn flex-1 py-1.5 text-xs font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Fútbol 11</button>
+        </div>
+      </div>
+
       <div class="flex flex-col gap-2">
         <button id="btn-export-data" type="button" class="flex items-center gap-2 border border-border hover:border-turf/50 hover:bg-card text-muted hover:text-ink font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M4 19h16"/></svg>
@@ -222,7 +231,7 @@
           <div class="flex items-center gap-4">
             <span class="text-sm text-muted"><span id="plantilla-count">0</span> jugadores registrados</span>
           </div>
-          <button id="btn-add-player" class="flex items-center gap-2 bg-turf hover:bg-turfline text-base font-display font-700 uppercase text-sm tracking-wide px-4 py-2.5 rounded-lg transition-colors">
+          <button id="btn-add-player" class="flex items-center gap-2 bg-turf hover:bg-turfline text-night font-display font-700 uppercase text-sm tracking-wide px-4 py-2.5 rounded-lg transition-colors">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo jugador
           </button>
@@ -305,12 +314,12 @@
       <section id="screen-entrenamientos" class="screen">
         <div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
           <div id="exercise-filters" class="flex flex-wrap gap-2">
-            <button data-filter="Todos" class="filter-pill active px-4 py-2 rounded-full text-sm font-display font-600 uppercase tracking-wide border border-turf bg-turf text-base transition-colors">Todos</button>
+            <button data-filter="Todos" class="filter-pill active px-4 py-2 rounded-full text-sm font-display font-600 uppercase tracking-wide border border-turf bg-turf text-night transition-colors">Todos</button>
             <button data-filter="Físico" class="filter-pill px-4 py-2 rounded-full text-sm font-display font-600 uppercase tracking-wide border border-border text-muted hover:text-ink hover:border-gold/50 transition-colors">Físico</button>
             <button data-filter="Táctico" class="filter-pill px-4 py-2 rounded-full text-sm font-display font-600 uppercase tracking-wide border border-border text-muted hover:text-ink hover:border-turf/50 transition-colors">Táctico</button>
             <button data-filter="Técnico" class="filter-pill px-4 py-2 rounded-full text-sm font-display font-600 uppercase tracking-wide border border-border text-muted hover:text-ink hover:border-turfdark/50 transition-colors">Técnico</button>
           </div>
-          <button id="btn-add-exercise" class="flex items-center gap-2 bg-turf hover:bg-turfline text-base font-display font-700 uppercase text-sm tracking-wide px-4 py-2.5 rounded-lg transition-colors">
+          <button id="btn-add-exercise" class="flex items-center gap-2 bg-turf hover:bg-turfline text-night font-display font-700 uppercase text-sm tracking-wide px-4 py-2.5 rounded-lg transition-colors">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo ejercicio
           </button>
@@ -320,12 +329,87 @@
 
         <!-- ---------- Calendario semanal ---------- -->
         <div>
-          <p class="text-xs uppercase tracking-widest text-turf font-display font-600 mb-3">Calendario semanal</p>
+          <div class="flex items-center justify-between mb-2 gap-3 flex-wrap">
+            <p class="text-xs uppercase tracking-widest text-turf font-display font-600">Calendario semanal</p>
+            <div class="flex items-center gap-2">
+              <button id="btn-week-prev" type="button" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana anterior">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+              </button>
+              <button id="btn-week-today" type="button" class="px-3 py-1.5 rounded-lg border border-border hover:border-turf/50 text-xs font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Hoy</button>
+              <span id="calendar-week-label" class="text-sm text-muted min-w-[130px] text-center"></span>
+              <button id="btn-week-next" type="button" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana siguiente">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+          <p class="text-xs text-muted mb-3">Arrastra un ejercicio hasta un día para programarlo, o pulsa el "+" de un día para añadir una sesión. Pulsa una sesión para pasar lista de asistencia.</p>
           <div id="calendar-grid" class="grid grid-cols-7 gap-2 sm:gap-3">
             <!-- Los días y sesiones se generan por JavaScript -->
           </div>
         </div>
       </section>
+
+      <!-- ============ MODAL: NUEVA SESIÓN DE ENTRENAMIENTO ============ -->
+      <div id="session-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+        <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
+          <div class="flex items-center justify-between mb-5">
+            <h2 class="font-display font-700 text-xl uppercase">Nueva sesión</h2>
+            <button id="session-modal-close" class="text-muted hover:text-ink">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <form id="form-add-session" class="space-y-4">
+            <input type="hidden" id="input-session-date">
+            <div>
+              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Título</label>
+              <input id="input-session-label" type="text" required class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Categoría</label>
+                <select id="input-session-category" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+                  <option value="Físico">Físico</option>
+                  <option value="Táctico">Táctico</option>
+                  <option value="Técnico">Técnico</option>
+                  <option value="Partido">Partido</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Hora</label>
+                <input id="input-session-time" type="time" value="18:00" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Ejercicio vinculado (opcional)</label>
+              <select id="input-session-exercise" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+                <option value="">— Ninguno —</option>
+              </select>
+            </div>
+            <div class="flex gap-3 pt-2">
+              <button type="button" id="session-modal-cancel" class="flex-1 border border-border rounded-lg py-2.5 font-display font-600 uppercase text-sm tracking-wide text-muted hover:text-ink hover:bg-card transition-colors">Cancelar</button>
+              <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ============ MODAL: DETALLE DE SESIÓN + ASISTENCIA ============ -->
+      <div id="session-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+        <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
+          <div class="flex items-center justify-between mb-1">
+            <h2 id="session-detail-title" class="font-display font-700 text-xl uppercase">—</h2>
+            <button id="session-detail-close" class="text-muted hover:text-ink">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <p id="session-detail-meta" class="text-xs text-muted mb-4">—</p>
+          <p class="text-xs uppercase tracking-wide text-muted mb-2">Asistencia</p>
+          <div id="session-detail-attendance" class="space-y-1.5 max-h-64 overflow-y-auto mb-4"></div>
+          <button id="btn-delete-session" type="button" class="w-full border border-red-500/30 hover:bg-red-500/15 text-red-400 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+            Eliminar sesión
+          </button>
+        </div>
+      </div>
 
       <!-- ============ MODAL: NUEVO EJERCICIO ============ -->
       <div id="exercise-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
@@ -361,7 +445,7 @@
             </div>
             <div class="flex gap-3 pt-2">
               <button type="button" id="exercise-modal-cancel" class="flex-1 border border-border rounded-lg py-2.5 font-display font-600 uppercase text-sm tracking-wide text-muted hover:text-ink hover:bg-card transition-colors">Cancelar</button>
-              <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-base rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
+              <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
             </div>
           </form>
         </div>
@@ -370,12 +454,69 @@
       <!-- ---------- SCREEN: PARTIDO EN VIVO (Módulo 5) ---------- -->
       <section id="screen-partido" class="screen">
 
+        <!-- Datos del partido -->
+        <div class="bg-card border border-border rounded-xl p-5 mb-6 grid sm:grid-cols-[1fr_160px_auto] gap-4 items-end">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Rival</label>
+            <input id="input-match-rival" type="text" placeholder="Ej. C.D. Rival" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Fecha</label>
+            <input id="input-match-date" type="date" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+          </div>
+          <button id="btn-finish-match" type="button" class="flex items-center justify-center gap-2 border border-gold/40 hover:bg-gold/10 text-gold font-display font-700 uppercase text-sm tracking-wide px-4 py-2.5 rounded-lg transition-colors whitespace-nowrap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>
+            Finalizar partido
+          </button>
+        </div>
+
+        <!-- Marcador, goles y tarjetas -->
+        <div class="bg-card border border-border rounded-xl p-6 mb-6">
+          <div class="flex items-center justify-center gap-6 mb-5">
+            <div class="text-center">
+              <p class="text-xs uppercase tracking-wide text-turf mb-1">Nuestro equipo</p>
+              <p id="score-own" class="font-display font-700 text-4xl">0</p>
+            </div>
+            <p class="font-display font-700 text-2xl text-muted">—</p>
+            <div class="text-center">
+              <p class="text-xs uppercase tracking-wide text-muted mb-1">Rival</p>
+              <p id="score-rival" class="font-display font-700 text-4xl">0</p>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-2 flex-wrap mb-3">
+            <button id="btn-goal-own" type="button" class="border border-turf/40 hover:bg-turf/10 text-turf font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">+ Gol nuestro</button>
+            <button id="btn-goal-rival" type="button" class="border border-border hover:bg-card text-muted hover:text-ink font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">+ Gol rival</button>
+            <button id="btn-add-card" type="button" class="border border-gold/40 hover:bg-gold/10 text-gold font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">+ Tarjeta</button>
+          </div>
+
+          <div id="goal-own-picker" class="hidden max-w-sm mx-auto mb-3 flex gap-2">
+            <select id="select-goal-scorer" class="flex-1 bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">
+              <option value="">Sin especificar</option>
+            </select>
+            <button id="btn-confirm-goal-own" type="button" class="bg-turf hover:bg-turfline text-night font-display font-600 uppercase text-xs px-3 py-1.5 rounded-lg transition-colors">Registrar</button>
+          </div>
+
+          <div id="card-picker" class="hidden max-w-sm mx-auto mb-3 flex gap-2">
+            <select id="select-card-type" class="bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">
+              <option value="yellow">Amarilla</option>
+              <option value="red">Roja</option>
+            </select>
+            <select id="select-card-player" class="flex-1 bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">
+              <option value="">Jugador…</option>
+            </select>
+            <button id="btn-confirm-card" type="button" class="bg-turf hover:bg-turfline text-night font-display font-600 uppercase text-xs px-3 py-1.5 rounded-lg transition-colors">Registrar</button>
+          </div>
+
+          <div id="match-events-list" class="space-y-1.5 max-w-md mx-auto"></div>
+        </div>
+
         <!-- Cronómetro -->
         <div class="bg-card border border-border rounded-xl p-6 mb-8 flex flex-col items-center gap-4">
           <button id="btn-toggle-half" class="px-3 py-1 rounded-full text-xs font-display font-600 uppercase tracking-wide border border-turf/40 text-turf hover:bg-turf/10 transition-colors">1ª Parte</button>
           <p id="match-clock" class="font-display font-700 text-6xl tabular-nums tracking-wide">00:00</p>
           <div class="flex items-center gap-3">
-            <button id="btn-toggle-clock" class="flex items-center gap-2 bg-turf hover:bg-turfline text-base font-display font-700 uppercase text-sm tracking-wide px-5 py-2.5 rounded-lg transition-colors">
+            <button id="btn-toggle-clock" class="flex items-center gap-2 bg-turf hover:bg-turfline text-night font-display font-700 uppercase text-sm tracking-wide px-5 py-2.5 rounded-lg transition-colors">
               <svg id="icon-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4.5v15l13-7.5z"/></svg>
               <svg id="icon-pause" class="hidden" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/></svg>
               <span id="clock-btn-label">Iniciar</span>
@@ -413,21 +554,21 @@
           <div class="grid sm:grid-cols-[1fr_160px] gap-4 mb-4">
             <div>
               <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Nombre del rival</label>
-              <input id="input-rival-name" type="text" placeholder="Ej. C.D. Rival" class="w-full bg-base border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              <input id="input-rival-name" type="text" placeholder="Ej. C.D. Rival" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
             </div>
             <div>
               <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Sistema habitual</label>
-              <input id="input-rival-system" type="text" placeholder="1-4-3-3" class="w-full bg-base border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              <input id="input-rival-system" type="text" placeholder="1-4-3-3" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
             </div>
           </div>
           <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Notas de scouting</label>
-          <textarea id="input-rival-notes" rows="5" placeholder="Puntos fuertes, jugadores clave a vigilar, plan de partido…" class="w-full bg-base border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf resize-y"></textarea>
+          <textarea id="input-rival-notes" rows="5" placeholder="Puntos fuertes, jugadores clave a vigilar, plan de partido…" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf resize-y"></textarea>
         </div>
 
         <!-- Lista de seguimiento -->
         <div class="flex items-center justify-between mb-5 gap-4 flex-wrap">
           <span class="text-sm text-muted"><span id="scouting-count">0</span> jugadores en seguimiento</span>
-          <button id="btn-add-scout" class="flex items-center gap-2 bg-turf hover:bg-turfline text-base font-display font-700 uppercase text-sm tracking-wide px-4 py-2.5 rounded-lg transition-colors">
+          <button id="btn-add-scout" class="flex items-center gap-2 bg-turf hover:bg-turfline text-night font-display font-700 uppercase text-sm tracking-wide px-4 py-2.5 rounded-lg transition-colors">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
             Nuevo fichaje
           </button>
@@ -486,9 +627,43 @@
         </label>
         <div class="flex gap-3 pt-2">
           <button type="button" id="modal-cancel" class="flex-1 border border-border rounded-lg py-2.5 font-display font-600 uppercase text-sm tracking-wide text-muted hover:text-ink hover:bg-card transition-colors">Cancelar</button>
-          <button type="submit" id="modal-submit-player" class="flex-1 bg-turf hover:bg-turfline text-base rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
+          <button type="submit" id="modal-submit-player" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: FICHA DE JUGADOR (estadísticas) ============ -->
+  <div id="player-stats-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+    <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
+      <div class="flex items-center justify-between mb-5">
+        <div class="min-w-0">
+          <h2 id="player-stats-name" class="font-display font-700 text-xl uppercase truncate">—</h2>
+          <p id="player-stats-position" class="text-xs uppercase tracking-wide text-muted mt-1">—</p>
+        </div>
+        <button id="player-stats-close" class="text-muted hover:text-ink shrink-0">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <p id="player-stats-loading" class="text-sm text-muted">Cargando estadísticas…</p>
+      <div id="player-stats-body" class="hidden grid grid-cols-2 gap-3">
+        <div class="bg-card border border-border rounded-xl p-4">
+          <p class="text-xs uppercase tracking-wide text-muted mb-1">Goles (temporada)</p>
+          <p id="stat-player-goals" class="font-display font-700 text-2xl text-turf">0</p>
+        </div>
+        <div class="bg-card border border-border rounded-xl p-4">
+          <p class="text-xs uppercase tracking-wide text-muted mb-1">Minutos jugados</p>
+          <p id="stat-player-minutes" class="font-display font-700 text-2xl">0</p>
+        </div>
+        <div class="bg-card border border-border rounded-xl p-4">
+          <p class="text-xs uppercase tracking-wide text-muted mb-1">Tarjetas (A / R)</p>
+          <p id="stat-player-cards" class="font-display font-700 text-2xl"><span class="text-gold">0</span> <span class="text-muted text-base">/</span> <span class="text-red-400">0</span></p>
+        </div>
+        <div class="bg-card border border-border rounded-xl p-4">
+          <p class="text-xs uppercase tracking-wide text-muted mb-1">Asistencia entrenos</p>
+          <p id="stat-player-attendance" class="font-display font-700 text-2xl">0 / 0</p>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -527,7 +702,7 @@
         </div>
         <div class="flex gap-3 pt-2">
           <button type="button" id="scout-modal-cancel" class="flex-1 border border-border rounded-lg py-2.5 font-display font-600 uppercase text-sm tracking-wide text-muted hover:text-ink hover:bg-card transition-colors">Cancelar</button>
-          <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-base rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
+          <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
         </div>
       </form>
     </div>

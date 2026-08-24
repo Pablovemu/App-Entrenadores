@@ -24,6 +24,7 @@ oficina-entrenador-app/
 ├── netlify.toml           # Configuración de despliegue en Netlify
 ├── supabase_schema.sql                       # Tablas base + RLS (ejecutar primero, una vez)
 ├── supabase_migration_02_admin_and_match.sql # Partido en Vivo persistente + panel de admin (ejecutar después)
+├── supabase_migration_03_stats_calendar_match.sql # Formato F7/F11, calendario real, asistencia e histórico de partidos (ejecutar el último)
 └── .gitignore
 ```
 
@@ -55,11 +56,11 @@ Hay también `npm run css:watch` para que se regenere automáticamente mientras 
 
 ## Estado actual — los 6 módulos
 
-1. **Base y Navegación** ✅ — Menú lateral oscuro/verde césped con indicador de sección activa.
-2. **Gestión de Plantilla** ✅ — Alta/baja de jugadores (nombre, dorsal, posición), con persistencia.
-3. **Pizarra Táctica** ✅ — Campo con 22 fichas + balón, arrastrables (funciona con ratón y con dedo/tablet), dibujo de líneas/flechas en 3 colores, botón reiniciar. Con persistencia.
-4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros y alta/baja. Calendario semanal de ejemplo (fijo, sin edición todavía). Con persistencia de ejercicios.
-5. **Gestión de Minutos y Partido** ✅ — Cronómetro, alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. Con persistencia (tabla `match_state`): sobrevive a un refresco de página, aunque siempre queda en pausa al recargar (hay que pulsar "Reanudar").
+1. **Base y Navegación** ✅ — Menú lateral oscuro/verde césped con indicador de sección activa. Incluye un selector de **formato de equipo** (Fútbol 7 / Fútbol 11) que afecta a la Pizarra y al Partido en Vivo (ver más abajo).
+2. **Gestión de Plantilla** ✅ — Alta/baja de jugadores (nombre, dorsal, posición), con persistencia. Al pulsar sobre un jugador se abre su **ficha de estadísticas de temporada**: goles, minutos jugados, tarjetas y asistencia a entrenamientos, calculados a partir del histórico de partidos y de las sesiones de entrenamiento.
+3. **Pizarra Táctica** ✅ — Campo con fichas + balón, arrastrables (funciona con ratón y con dedo/tablet), dibujo de líneas/flechas en 3 colores, botón reiniciar. La formación es de 11 vs 11 o 7 vs 7 según el formato de equipo elegido. Con persistencia.
+4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros y alta/baja. **Calendario semanal real**, navegable semana a semana: se pueden crear sesiones en un día concreto (o arrastrar una tarjeta de ejercicio hasta el día), y cada sesión permite pasar lista de **asistencia a entrenamientos** jugador por jugador.
+5. **Gestión de Minutos y Partido** ✅ — Datos del partido (rival y fecha), **marcador de goles** (con autor cuando es de nuestro equipo), **tarjetas amarillas/rojas** (con el jugador al que se le muestran), cronómetro con partes (2 en Fútbol 11, 4 en Fútbol 7), alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. El partido en curso persiste (tabla `match_state`) y sobrevive a un refresco de página (siempre queda en pausa al recargar, hay que pulsar "Reanudar"). Al pulsar **"Finalizar partido"** se guarda en el histórico (tabla `matches`), que es de donde salen las estadísticas de la ficha de cada jugador.
 6. **Scouting y Rival** ✅ — Notas del rival con autoguardado, lista de seguimiento de fichajes con alta/baja.
 
 ### Cuentas de usuario y backend (Supabase)
@@ -105,22 +106,29 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
 - [ ] Borrar la cuenta de acceso (login) también desde el panel de admin de la app, sin pasar por Supabase — requeriría una Netlify Function que guarde la clave `service_role` de forma segura en el servidor (no en el navegador). Se decidió no hacerlo todavía: con pocos usuarios, borrar a mano en Supabase es más rápido que montar esa infraestructura. Reconsiderar si el borrado de cuentas se vuelve frecuente.
 
 **Calendario semanal (Módulo 4)**
-- [ ] Sigue siendo una semana de ejemplo fija: falta poder editarlo, moverse entre semanas, y arrastrar ejercicios a un día concreto.
+- [x] Calendario con fechas reales, navegable semana a semana, con creación de sesiones (a mano o arrastrando un ejercicio) y asistencia a entrenamientos por sesión.
+- [ ] No se pueden mover/arrastrar sesiones ya creadas de un día a otro (hay que borrarla y crearla de nuevo).
 
 **Partido (Módulo 5)**
 - [x] Persistencia añadida (tabla `match_state`, ver arriba).
-- [ ] El botón de 1ª/2ª parte es solo una etiqueta manual, no corta el cronómetro automáticamente.
-- [ ] No hay marcador de goles/tarjetas ni histórico de partidos pasados.
+- [x] El botón de parte ahora cicla 1ª/2ª (Fútbol 11) o 1ª-4ª (Fútbol 7) según el formato de equipo, aunque sigue siendo una etiqueta manual (no corta el cronómetro solo).
+- [x] Marcador de goles (con autor) y tarjetas (con jugador), más histórico de partidos pasados (tabla `matches`, botón "Finalizar partido").
+- [ ] No hay edición de un partido ya finalizado (para corregir un dato después de guardarlo en el histórico habría que hacerlo directamente en Supabase).
+
+**Formato de equipo**
+- [x] Selector Fútbol 7 / Fútbol 11 en la barra lateral: decide las partes del partido (2 o 4) y la formación de la Pizarra (7 vs 7 u 11 vs 11).
 
 **Plantilla (Módulo 2)**
 - [x] Edición de un jugador ya creado: el lápiz de cada tarjeta abre el mismo modal de alta, precargado, para cambiar dorsal/nombre/posición/asistencia.
 - [x] Marcar asistencia desde la interfaz: el punto de color de cada tarjeta es ahora un botón que alterna presente/ausente con un clic (también editable desde el modal).
+- [x] Ficha de jugador con estadísticas de temporada (goles, minutos, tarjetas, asistencia a entrenamientos) al pulsar sobre su tarjeta.
 
 **Scouting**
 - [ ] Las notas del rival no tienen histórico por jornada (se sobrescribe siempre el mismo bloque).
 - [ ] La lista de seguimiento no tiene estado (observación/contactado/descartado).
 
 **Otros**
+- [x] Bug de contraste corregido: el color personalizado `base` de `tailwind.config.js` colisionaba con la utilidad de tamaño de fuente `text-base` de Tailwind (misma clase `.text-base`, la regla de color ganaba el cascade), y por eso nombres de jugador, fichajes de scouting y usuarios del panel admin se veían en negro sobre fondo oscuro. Se renombró ese color a `night`.
 - [ ] Accesibilidad: revisar foco de teclado y atributos ARIA.
 - [ ] Revisar el truncado de nombres largos en las tarjetas de jugador (algunos nombres se cortan más de lo necesario).
 - [ ] Tests básicos / comprobación automática antes de cada despliegue (aunque sea un script simple que abra la app con Playwright y compruebe que no hay errores en consola).

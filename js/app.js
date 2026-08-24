@@ -89,6 +89,13 @@
       renderPlayers();
       return;
     }
+    const viewBtn = e.target.closest('.btn-view-player');
+    if (viewBtn) {
+      const id = Number(viewBtn.dataset.viewId);
+      const player = players.find(p => p.id === id);
+      if (player) openPlayerStatsModal(player);
+      return;
+    }
   });
 
   function renderPlayers() {
@@ -101,16 +108,18 @@
         const card = document.createElement('div');
         card.className = `bg-card border border-border hover:border-turf/40 rounded-xl p-4 flex items-center gap-4 transition-colors`;
         card.innerHTML = `
-          <div class="w-14 h-14 shrink-0 rounded-full bg-base border-2 ${s.border} flex items-center justify-center">
-            <span class="font-display font-700 text-xl">${p.number}</span>
-          </div>
-          <div class="min-w-0 flex-1">
-            <p class="font-display font-600 text-base truncate">${p.name}</p>
-            <div class="flex items-center gap-2 mt-1">
-              <span class="w-1.5 h-1.5 rounded-full ${s.dot}"></span>
-              <span class="text-xs uppercase tracking-wide ${s.text}">${s.label}</span>
+          <button type="button" data-view-id="${p.id}" class="btn-view-player flex items-center gap-4 flex-1 min-w-0 text-left bg-transparent p-0 cursor-pointer">
+            <div class="w-14 h-14 shrink-0 rounded-full bg-night border-2 ${s.border} flex items-center justify-center">
+              <span class="font-display font-700 text-xl">${p.number}</span>
             </div>
-          </div>
+            <div class="min-w-0 flex-1">
+              <p class="font-display font-600 text-base truncate">${escapeHtml(p.name)}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <span class="w-1.5 h-1.5 rounded-full ${s.dot}"></span>
+                <span class="text-xs uppercase tracking-wide ${s.text}">${s.label}</span>
+              </div>
+            </div>
+          </button>
           <div class="shrink-0 flex flex-col items-end gap-2">
             <button data-present-id="${p.id}" class="btn-toggle-present w-5 h-5 rounded-full border ${p.present ? 'bg-turf border-turf' : 'bg-transparent border-muted/40'} transition-colors" title="${p.present ? 'Disponible (clic para marcar ausente)' : 'No disponible (clic para marcar presente)'}"></button>
             <div class="flex items-center gap-1">
@@ -269,8 +278,58 @@
     closeModal();
   });
 
+  // ---------- Ficha de jugador: estadísticas de temporada ----------
+  const playerStatsModalBackdrop = document.getElementById('player-stats-modal-backdrop');
+
+  function closePlayerStatsModal() {
+    playerStatsModalBackdrop.classList.add('hidden');
+    playerStatsModalBackdrop.classList.remove('flex');
+  }
+  document.getElementById('player-stats-close').addEventListener('click', closePlayerStatsModal);
+  playerStatsModalBackdrop.addEventListener('click', (e) => { if (e.target === playerStatsModalBackdrop) closePlayerStatsModal(); });
+
+  async function openPlayerStatsModal(player) {
+    document.getElementById('player-stats-name').textContent = `#${player.number} ${player.name}`;
+    document.getElementById('player-stats-position').textContent = positionStyles[player.position]?.label || player.position;
+    document.getElementById('player-stats-loading').classList.remove('hidden');
+    document.getElementById('player-stats-body').classList.add('hidden');
+    playerStatsModalBackdrop.classList.remove('hidden');
+    playerStatsModalBackdrop.classList.add('flex');
+
+    const [{ data: matchRows, error: matchesError }, { data: attendanceRows, error: attendanceError }] = await Promise.all([
+      db.from('matches').select('events, players'),
+      db.from('training_attendance').select('present').eq('player_id', player.id),
+    ]);
+    if (matchesError) console.error('No se pudieron cargar los partidos:', matchesError);
+    if (attendanceError) console.error('No se pudo cargar la asistencia:', attendanceError);
+
+    let goals = 0, yellows = 0, reds = 0, seconds = 0;
+    (matchRows || []).forEach(m => {
+      (m.events || []).forEach(ev => {
+        if (ev.playerId !== player.id || ev.team !== 'own') return;
+        if (ev.type === 'goal') goals++;
+        else if (ev.type === 'yellow') yellows++;
+        else if (ev.type === 'red') reds++;
+      });
+      const mp = (m.players || []).find(mp => mp.id === player.id);
+      if (mp) seconds += mp.seconds || 0;
+    });
+    const attendancePresent = (attendanceRows || []).filter(a => a.present).length;
+    const attendanceTotal = (attendanceRows || []).length;
+
+    document.getElementById('stat-player-goals').textContent = goals;
+    document.getElementById('stat-player-minutes').textContent = Math.floor(seconds / 60);
+    document.getElementById('stat-player-cards').innerHTML =
+      `<span class="text-gold">${yellows}</span> <span class="text-muted text-base">/</span> <span class="text-red-400">${reds}</span>`;
+    document.getElementById('stat-player-attendance').textContent = `${attendancePresent} / ${attendanceTotal}`;
+
+    document.getElementById('player-stats-loading').classList.add('hidden');
+    document.getElementById('player-stats-body').classList.remove('hidden');
+  }
+
   // ---------- Pizarra Táctica (Módulo 3) ----------
-  // Formación por defecto 1-4-3-3. Eje Y: 0 = portería rival (arriba), 100 = nuestra portería (abajo).
+  // Formación por defecto 1-4-3-3 (Fútbol 11) y 1-2-3-1 (Fútbol 7).
+  // Eje Y: 0 = portería rival (arriba), 100 = nuestra portería (abajo).
   const blueFormation = [
     { id: 'b1',  num: 1,  x: 50, y: 96 },
     { id: 'b2',  num: 2,  x: 14, y: 80 },
@@ -285,7 +344,26 @@
     { id: 'b11', num: 11, x: 70, y: 52 },
   ];
   const redFormation = blueFormation.map(p => ({ id: 'r' + p.id, num: p.num, x: p.x, y: 100 - p.y }));
+
+  const blueFormation7 = [
+    { id: 'b1', num: 1,  x: 50, y: 94 },
+    { id: 'b2', num: 2,  x: 30, y: 78 },
+    { id: 'b4', num: 4,  x: 70, y: 78 },
+    { id: 'b6', num: 6,  x: 25, y: 60 },
+    { id: 'b8', num: 8,  x: 50, y: 58 },
+    { id: 'b10', num: 10, x: 75, y: 60 },
+    { id: 'b9', num: 9,  x: 50, y: 46 },
+  ];
+  const redFormation7 = blueFormation7.map(p => ({ id: 'r' + p.id, num: p.num, x: p.x, y: 100 - p.y }));
+
   const defaultBallPos = { x: 50, y: 50 };
+
+  function currentFormations() {
+    const format = currentUser && currentUser.gameFormat === 'F7' ? 'F7' : 'F11';
+    return format === 'F7'
+      ? { blue: blueFormation7, red: redFormation7 }
+      : { blue: blueFormation, red: redFormation };
+  }
 
   const pitch = document.getElementById('pitch');
   const drawCanvas = document.getElementById('draw-canvas');
@@ -374,15 +452,17 @@
     if (error) console.error('No se pudo cargar la pizarra:', error);
     const savedPos = saved ? saved.positions : null;
     drawnStrokes = saved && saved.strokes ? saved.strokes : [];
-    blueFormation.forEach(p => pitch.appendChild(createChip(p, 'blue', savedPos)));
-    redFormation.forEach(p => pitch.appendChild(createChip(p, 'red', savedPos)));
+    const { blue, red } = currentFormations();
+    blue.forEach(p => pitch.appendChild(createChip(p, 'blue', savedPos)));
+    red.forEach(p => pitch.appendChild(createChip(p, 'red', savedPos)));
     pitch.appendChild(createBall(savedPos && savedPos.ball ? savedPos.ball : null));
     resizeCanvas();
     redrawCanvas();
   }
 
   document.getElementById('btn-reset-pizarra').addEventListener('click', () => {
-    [...blueFormation, ...redFormation].forEach(p => {
+    const { blue, red } = currentFormations();
+    [...blue, ...red].forEach(p => {
       const chip = document.getElementById(p.id);
       if (chip) {
         chip.style.left = `${chip.dataset.defaultX}%`;
@@ -546,7 +626,9 @@
       .forEach(ex => {
         const s = exerciseCategoryStyles[ex.category];
         const card = document.createElement('div');
-        card.className = `bg-card border ${s.ring} rounded-xl p-4`;
+        card.className = `bg-card border ${s.ring} rounded-xl p-4 cursor-grab`;
+        card.draggable = true;
+        card.dataset.exerciseId = ex.id;
         card.innerHTML = `
           <div class="flex items-center justify-between mb-2">
             <span class="flex items-center gap-2 text-xs uppercase tracking-wide ${s.text} font-display font-600">
@@ -584,7 +666,7 @@
       p.classList.toggle('active', active);
       p.classList.toggle('bg-turf', active);
       p.classList.toggle('border-turf', active);
-      p.classList.toggle('text-base', active);
+      p.classList.toggle('text-night', active);
       p.classList.toggle('border-border', !active);
       p.classList.toggle('text-muted', !active);
     });
@@ -626,53 +708,241 @@
     closeExerciseModal();
   });
 
-  // Calendario semanal (vista estática de ejemplo)
-  const weekPlan = [
-    { day: 'Lun', sessions: [{ label: 'Técnico', time: '18:00', category: 'Técnico' }] },
-    { day: 'Mar', sessions: [{ label: 'Físico', time: '18:00', category: 'Físico' }] },
-    { day: 'Mié', sessions: [] },
-    { day: 'Jue', sessions: [{ label: 'Táctico', time: '18:00', category: 'Táctico' }] },
-    { day: 'Vie', sessions: [{ label: 'Técnico', time: '18:30', category: 'Técnico' }] },
-    { day: 'Sáb', sessions: [{ label: 'Partido', time: '17:00', category: 'Partido' }] },
-    { day: 'Dom', sessions: [] },
-  ];
-
+  // ---------- Calendario semanal real + asistencia a entrenamientos ----------
   const calendarSessionStyles = {
     'Físico':  'bg-gold/15 text-gold border border-gold/30',
     'Táctico': 'bg-turf/15 text-turf border border-turf/30',
     'Técnico': 'bg-turfdark/20 text-turfline border border-turfdark/40',
     'Partido': 'bg-red-500/15 text-red-400 border border-red-500/30',
   };
+  const DAY_NAMES = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+  function mondayOf(date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0=domingo..6=sábado
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }
+  function dateStr(d) { return d.toISOString().slice(0, 10); }
+  function addDays(d, n) { const copy = new Date(d); copy.setDate(copy.getDate() + n); return copy; }
+
+  let currentWeekStart = mondayOf(new Date());
+  let weekSessions = [];
 
   const calendarGrid = document.getElementById('calendar-grid');
-  weekPlan.forEach(d => {
-    const col = document.createElement('div');
-    col.className = 'bg-card border border-border rounded-xl p-2 sm:p-3 min-h-[110px] flex flex-col';
-    const sessionsHtml = d.sessions.length
-      ? d.sessions.map(s => `
-          <div class="rounded-lg px-2 py-1.5 mb-1.5 text-[11px] sm:text-xs font-display font-600 ${calendarSessionStyles[s.category]}">
-            ${s.label}<br><span class="opacity-70">${s.time}</span>
-          </div>`).join('')
-      : `<span class="text-[11px] text-muted/60">Descanso</span>`;
-    col.innerHTML = `
-      <p class="text-xs uppercase tracking-wide text-muted font-display font-600 mb-2">${d.day}</p>
-      ${sessionsHtml}
-    `;
-    calendarGrid.appendChild(col);
+  const calendarWeekLabel = document.getElementById('calendar-week-label');
+
+  async function loadWeekSessions() {
+    const start = dateStr(currentWeekStart);
+    const end = dateStr(addDays(currentWeekStart, 6));
+    const { data, error } = await db.from('training_sessions')
+      .select('*')
+      .gte('session_date', start)
+      .lte('session_date', end)
+      .order('time', { ascending: true });
+    if (error) { console.error('No se pudieron cargar las sesiones:', error); weekSessions = []; }
+    else weekSessions = data;
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    const start = currentWeekStart;
+    const end = addDays(start, 6);
+    calendarWeekLabel.textContent =
+      `${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
+
+    calendarGrid.innerHTML = '';
+    const todayIso = dateStr(new Date());
+    for (let i = 0; i < 7; i++) {
+      const day = addDays(start, i);
+      const iso = dateStr(day);
+      const isToday = iso === todayIso;
+      const daySessions = weekSessions.filter(s => s.session_date === iso);
+
+      const col = document.createElement('div');
+      col.className = `bg-card border ${isToday ? 'border-turf/60' : 'border-border'} rounded-xl p-2 sm:p-3 min-h-[130px] flex flex-col transition-colors`;
+      const sessionsHtml = daySessions.length
+        ? daySessions.map(s => `
+            <div data-session-id="${s.id}" class="btn-open-session cursor-pointer rounded-lg px-2 py-1.5 mb-1.5 text-[11px] sm:text-xs font-display font-600 ${calendarSessionStyles[s.category] || calendarSessionStyles['Táctico']}">
+              ${escapeHtml(s.label)}${s.time ? `<br><span class="opacity-70">${s.time}</span>` : ''}
+            </div>`).join('')
+        : '';
+      col.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-xs uppercase tracking-wide ${isToday ? 'text-turf' : 'text-muted'} font-display font-600">${DAY_NAMES[i]} <span class="opacity-70">${day.getDate()}</span></p>
+          <button type="button" data-add-day="${iso}" class="btn-add-session text-muted hover:text-turf transition-colors" title="Añadir sesión">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        </div>
+        <div class="flex-1">${sessionsHtml || '<span class="text-[11px] text-muted/60">Sin sesión</span>'}</div>
+      `;
+      col.addEventListener('dragover', (e) => { e.preventDefault(); col.classList.add('border-turf'); });
+      col.addEventListener('dragleave', () => col.classList.remove('border-turf'));
+      col.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        col.classList.remove('border-turf');
+        const exerciseId = Number(e.dataTransfer.getData('text/exercise-id'));
+        const exercise = exercises.find(ex => ex.id === exerciseId);
+        if (!exercise) return;
+        await createSession({ session_date: iso, time: '18:00', label: exercise.name, category: exercise.category, exercise_id: exercise.id });
+      });
+      calendarGrid.appendChild(col);
+    }
+  }
+
+  async function createSession({ session_date, time, label, category, exercise_id }) {
+    const { data, error } = await db.from('training_sessions')
+      .insert({ user_id: currentUser.id, session_date, time, label, category, exercise_id: exercise_id || null })
+      .select()
+      .single();
+    if (error) { console.error(error); alert('No se pudo crear la sesión.'); return; }
+    weekSessions.push(data);
+    renderCalendar();
+  }
+
+  exercisesGrid.addEventListener('dragstart', (e) => {
+    const card = e.target.closest('[data-exercise-id]');
+    if (!card) return;
+    e.dataTransfer.setData('text/exercise-id', card.dataset.exerciseId);
+  });
+
+  calendarGrid.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('.btn-add-session');
+    if (addBtn) { openSessionModal(addBtn.dataset.addDay); return; }
+    const sessionEl = e.target.closest('.btn-open-session');
+    if (sessionEl) { openSessionDetail(Number(sessionEl.dataset.sessionId)); return; }
+  });
+
+  document.getElementById('btn-week-prev').addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, -7); loadWeekSessions(); });
+  document.getElementById('btn-week-next').addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, 7); loadWeekSessions(); });
+  document.getElementById('btn-week-today').addEventListener('click', () => { currentWeekStart = mondayOf(new Date()); loadWeekSessions(); });
+
+  // ---- Modal: nueva sesión ----
+  const sessionModalBackdrop = document.getElementById('session-modal-backdrop');
+  const sessionForm = document.getElementById('form-add-session');
+
+  function openSessionModal(iso) {
+    document.getElementById('input-session-date').value = iso;
+    const exerciseSelect = document.getElementById('input-session-exercise');
+    exerciseSelect.innerHTML = '<option value="">— Ninguno —</option>' +
+      exercises.map(ex => `<option value="${ex.id}">${escapeHtml(ex.name)}</option>`).join('');
+    sessionModalBackdrop.classList.remove('hidden');
+    sessionModalBackdrop.classList.add('flex');
+  }
+  function closeSessionModal() {
+    sessionModalBackdrop.classList.add('hidden');
+    sessionModalBackdrop.classList.remove('flex');
+    sessionForm.reset();
+  }
+  document.getElementById('session-modal-close').addEventListener('click', closeSessionModal);
+  document.getElementById('session-modal-cancel').addEventListener('click', closeSessionModal);
+  sessionModalBackdrop.addEventListener('click', (e) => { if (e.target === sessionModalBackdrop) closeSessionModal(); });
+
+  sessionForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const session_date = document.getElementById('input-session-date').value;
+    const label = document.getElementById('input-session-label').value.trim();
+    const category = document.getElementById('input-session-category').value;
+    const time = document.getElementById('input-session-time').value;
+    const exerciseId = document.getElementById('input-session-exercise').value;
+    if (!label || !session_date) return;
+    await createSession({ session_date, time, label, category, exercise_id: exerciseId ? Number(exerciseId) : null });
+    closeSessionModal();
+  });
+
+  // ---- Modal: detalle de sesión + asistencia ----
+  const sessionDetailBackdrop = document.getElementById('session-detail-modal-backdrop');
+  let currentSessionId = null;
+
+  async function openSessionDetail(sessionId) {
+    const session = weekSessions.find(s => s.id === sessionId);
+    if (!session) return;
+    currentSessionId = sessionId;
+    document.getElementById('session-detail-title').textContent = session.label;
+    document.getElementById('session-detail-meta').textContent =
+      `${new Date(session.session_date + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}${session.time ? ' · ' + session.time : ''} · ${session.category}`;
+
+    const list = document.getElementById('session-detail-attendance');
+    list.innerHTML = '<p class="text-xs text-muted">Cargando…</p>';
+    sessionDetailBackdrop.classList.remove('hidden');
+    sessionDetailBackdrop.classList.add('flex');
+
+    const { data: attendance, error } = await db.from('training_attendance').select('*').eq('session_id', sessionId);
+    if (error) console.error('No se pudo cargar la asistencia:', error);
+    const attendanceMap = {};
+    (attendance || []).forEach(a => { attendanceMap[a.player_id] = a; });
+
+    list.innerHTML = '';
+    if (!players.length) {
+      list.innerHTML = '<p class="text-xs text-muted">No hay jugadores en la plantilla.</p>';
+      return;
+    }
+    players.slice().sort((a, b) => a.number - b.number).forEach(p => {
+      const rec = attendanceMap[p.id];
+      const present = rec ? rec.present : true;
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-3 bg-card border border-border rounded-lg px-3 py-2';
+      row.innerHTML = `
+        <span class="w-7 h-7 shrink-0 rounded-full bg-night border border-border flex items-center justify-center font-display font-700 text-xs">${p.number}</span>
+        <span class="flex-1 min-w-0 truncate font-display font-600 text-sm">${escapeHtml(p.name)}</span>
+        <button type="button" data-attendance-player="${p.id}" class="btn-toggle-attendance w-5 h-5 rounded-full border ${present ? 'bg-turf border-turf' : 'bg-transparent border-muted/40'} transition-colors" title="${present ? 'Presente (clic para marcar ausente)' : 'Ausente (clic para marcar presente)'}"></button>
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  document.getElementById('session-detail-attendance').addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-toggle-attendance');
+    if (!btn || !currentSessionId) return;
+    const playerId = Number(btn.dataset.attendancePlayer);
+    const present = btn.classList.contains('bg-transparent');
+    const { error } = await db.from('training_attendance')
+      .upsert({ user_id: currentUser.id, session_id: currentSessionId, player_id: playerId, present }, { onConflict: 'session_id,player_id' });
+    if (error) { console.error(error); return; }
+    btn.classList.toggle('bg-turf', present);
+    btn.classList.toggle('border-turf', present);
+    btn.classList.toggle('bg-transparent', !present);
+    btn.classList.toggle('border-muted/40', !present);
+    btn.title = present ? 'Presente (clic para marcar ausente)' : 'Ausente (clic para marcar presente)';
+  });
+
+  function closeSessionDetailModal() {
+    sessionDetailBackdrop.classList.add('hidden');
+    sessionDetailBackdrop.classList.remove('flex');
+    currentSessionId = null;
+  }
+  document.getElementById('session-detail-close').addEventListener('click', closeSessionDetailModal);
+  sessionDetailBackdrop.addEventListener('click', (e) => { if (e.target === sessionDetailBackdrop) closeSessionDetailModal(); });
+
+  document.getElementById('btn-delete-session').addEventListener('click', async () => {
+    if (!currentSessionId) return;
+    const confirmed = window.confirm('¿Eliminar esta sesión y su asistencia registrada?');
+    if (!confirmed) return;
+    const { error } = await db.from('training_sessions').delete().eq('id', currentSessionId);
+    if (error) { console.error(error); alert('No se pudo eliminar la sesión.'); return; }
+    weekSessions = weekSessions.filter(s => s.id !== currentSessionId);
+    renderCalendar();
+    closeSessionDetailModal();
   });
 
   // ---------- Partido en Vivo (Módulo 5) ----------
-  // Se guarda en Supabase (tabla match_state): cronómetro, parte y minutos
-  // por jugador sobreviven a un refresco de página o a cerrar la pestaña.
-  // Al recargar, el partido queda en pausa (hay que pulsar "Reanudar") para
-  // no tener que calcular el tiempo transcurrido mientras la app no estaba
-  // abierta.
+  // El partido EN CURSO se guarda en Supabase (tabla match_state):
+  // cronómetro, parte, minutos por jugador, rival, fecha y eventos (goles y
+  // tarjetas) sobreviven a un refresco de página o a cerrar la pestaña. Al
+  // recargar, el partido queda en pausa (hay que pulsar "Reanudar") para no
+  // tener que calcular el tiempo transcurrido mientras la app no estaba
+  // abierta. Al pulsar "Finalizar partido" se copia todo a la tabla
+  // `matches` (histórico), de donde se calculan las estadísticas de
+  // temporada de cada jugador (ver openPlayerStatsModal).
   let matchPlayers = [];
   let matchInitialized = false;
   let matchRunning = false;
   let matchSeconds = 0;
   let matchInterval = null;
   let matchHalf = 1;
+  let matchEvents = [];
 
   const matchClockEl = document.getElementById('match-clock');
   const fieldList = document.getElementById('field-list');
@@ -681,6 +951,13 @@
   const benchCountEl = document.getElementById('bench-count');
   const matchEmptyState = document.getElementById('match-empty-state');
   const matchContent = document.getElementById('match-content');
+  const inputMatchRival = document.getElementById('input-match-rival');
+  const inputMatchDate = document.getElementById('input-match-date');
+
+  function periodsForFormat(format) { return format === 'F7' ? 4 : 2; }
+  function startersForFormat(format) { return format === 'F7' ? 7 : 11; }
+  function periodLabel(n) { return ['1ª Parte', '2ª Parte', '3ª Parte', '4ª Parte'][n - 1] || `${n}ª Parte`; }
+  function todayIsoDate() { return new Date().toISOString().slice(0, 10); }
 
   function formatClock(totalSeconds) {
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
@@ -698,19 +975,21 @@
     matchEmptyState.classList.add('hidden');
     matchContent.classList.remove('hidden');
 
+    const starters = startersForFormat(currentUser?.gameFormat);
     const sorted = [...players].sort((a, b) => a.number - b.number);
     matchPlayers = sorted.map((p, i) => ({
       id: p.id,
       number: p.number,
       name: p.name,
       position: p.position,
-      onField: i < 11,
+      onField: i < starters,
       seconds: 0,
     }));
     matchSeconds = 0;
     matchHalf = 1;
+    matchEvents = [];
     matchClockEl.textContent = formatClock(matchSeconds);
-    document.getElementById('btn-toggle-half').textContent = '1ª Parte';
+    document.getElementById('btn-toggle-half').textContent = periodLabel(matchHalf);
     matchInitialized = true;
   }
 
@@ -721,6 +1000,9 @@
       half: matchHalf,
       seconds: matchSeconds,
       players: matchPlayers,
+      rival: inputMatchRival.value,
+      match_date: inputMatchDate.value || todayIsoDate(),
+      events: matchEvents,
       updated_at: new Date().toISOString(),
     });
     if (error) console.error('No se pudo guardar el estado del partido:', error);
@@ -752,17 +1034,21 @@
       matchPlayers = savedPlayers;
       matchSeconds = saved.seconds || 0;
       matchHalf = saved.half || 1;
+      matchEvents = Array.isArray(saved?.events) ? saved.events : [];
     } else {
       initMatchSquad();
     }
+    inputMatchRival.value = (saved && saved.rival) || '';
+    inputMatchDate.value = (saved && saved.match_date) || todayIsoDate();
     matchRunning = false;
     clearInterval(matchInterval);
     matchClockEl.textContent = formatClock(matchSeconds);
     document.getElementById('icon-play').classList.remove('hidden');
     document.getElementById('icon-pause').classList.add('hidden');
     document.getElementById('clock-btn-label').textContent = 'Iniciar';
-    document.getElementById('btn-toggle-half').textContent = matchHalf === 1 ? '1ª Parte' : '2ª Parte';
+    document.getElementById('btn-toggle-half').textContent = periodLabel(matchHalf);
     matchInitialized = true;
+    renderMatchEvents();
   }
 
   function renderMatchLists() {
@@ -777,8 +1063,8 @@
       const row = document.createElement('div');
       row.className = 'bg-card border border-turf/30 rounded-lg px-3 py-2.5 flex items-center gap-3';
       row.innerHTML = `
-        <span class="w-8 h-8 shrink-0 rounded-full bg-base border border-turf/50 flex items-center justify-center font-display font-700 text-sm">${p.number}</span>
-        <span class="flex-1 min-w-0 truncate font-display font-600 text-sm">${p.name}</span>
+        <span class="w-8 h-8 shrink-0 rounded-full bg-night border border-turf/50 flex items-center justify-center font-display font-700 text-sm">${p.number}</span>
+        <span class="flex-1 min-w-0 truncate font-display font-600 text-sm">${escapeHtml(p.name)}</span>
         <span class="font-display font-700 text-sm tabular-nums text-turf">${formatClock(p.seconds)}</span>
         <button data-sub-out="${p.id}" class="btn-open-sub text-muted hover:text-ink p-1" title="Sustituir">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M21 7H9a4 4 0 0 0-4 4"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h12a4 4 0 0 0 4-4"/></svg>
@@ -790,9 +1076,9 @@
       const subRow = document.createElement('div');
       subRow.id = `sub-select-${p.id}`;
       subRow.className = 'hidden pl-11 pr-3 -mt-1 mb-1';
-      const options = onBench.map(b => `<option value="${b.id}">#${b.number} ${b.name}</option>`).join('');
+      const options = onBench.map(b => `<option value="${b.id}">#${b.number} ${escapeHtml(b.name)}</option>`).join('');
       subRow.innerHTML = onBench.length
-        ? `<select class="sub-select w-full bg-base border border-border rounded-lg px-2 py-1.5 text-sm text-ink" data-sub-out="${p.id}">
+        ? `<select class="sub-select w-full bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink" data-sub-out="${p.id}">
              <option value="">Elegir suplente que entra…</option>
              ${options}
            </select>`
@@ -808,12 +1094,13 @@
       const row = document.createElement('div');
       row.className = 'bg-card border border-border rounded-lg px-3 py-2.5 flex items-center gap-3';
       row.innerHTML = `
-        <span class="w-8 h-8 shrink-0 rounded-full bg-base border border-border flex items-center justify-center font-display font-700 text-sm text-muted">${p.number}</span>
-        <span class="flex-1 min-w-0 truncate font-display font-600 text-sm text-muted">${p.name}</span>
+        <span class="w-8 h-8 shrink-0 rounded-full bg-night border border-border flex items-center justify-center font-display font-700 text-sm text-muted">${p.number}</span>
+        <span class="flex-1 min-w-0 truncate font-display font-600 text-sm text-muted">${escapeHtml(p.name)}</span>
         <span class="font-display font-700 text-sm tabular-nums text-muted">${formatClock(p.seconds)}</span>
       `;
       benchList.appendChild(row);
     });
+    populateMatchPickers();
   }
 
   fieldList.addEventListener('click', (e) => {
@@ -868,23 +1155,157 @@
     }
   });
 
-  document.getElementById('btn-reset-match').addEventListener('click', () => {
+  function resetMatchUiToZero() {
     matchRunning = false;
     clearInterval(matchInterval);
     matchClockEl.textContent = '00:00';
     document.getElementById('icon-play').classList.remove('hidden');
     document.getElementById('icon-pause').classList.add('hidden');
     document.getElementById('clock-btn-label').textContent = 'Iniciar';
-    document.getElementById('btn-toggle-half').textContent = '1ª Parte';
     initMatchSquad();
+    inputMatchRival.value = '';
+    inputMatchDate.value = todayIsoDate();
     renderMatchLists();
+    renderMatchEvents();
+  }
+
+  document.getElementById('btn-reset-match').addEventListener('click', () => {
+    const confirmed = window.confirm('Esto borra el partido actual (marcador, tarjetas y minutos) sin guardarlo en el historial. ¿Continuar?');
+    if (!confirmed) return;
+    resetMatchUiToZero();
     saveMatchState();
   });
 
   document.getElementById('btn-toggle-half').addEventListener('click', (e) => {
-    matchHalf = matchHalf === 1 ? 2 : 1;
-    e.target.textContent = matchHalf === 1 ? '1ª Parte' : '2ª Parte';
+    const total = periodsForFormat(currentUser?.gameFormat);
+    matchHalf = matchHalf >= total ? 1 : matchHalf + 1;
+    e.target.textContent = periodLabel(matchHalf);
     saveMatchState();
+  });
+
+  // ---- Marcador, goles y tarjetas ----
+  const goalOwnPicker = document.getElementById('goal-own-picker');
+  const cardPicker = document.getElementById('card-picker');
+  const matchEventsList = document.getElementById('match-events-list');
+
+  function populateMatchPickers() {
+    const options = matchPlayers.slice().sort((a, b) => a.number - b.number)
+      .map(p => `<option value="${p.id}">#${p.number} ${escapeHtml(p.name)}</option>`).join('');
+    document.getElementById('select-goal-scorer').innerHTML = `<option value="">Sin especificar</option>${options}`;
+    document.getElementById('select-card-player').innerHTML = `<option value="">Jugador…</option>${options}`;
+  }
+
+  function computeScore() {
+    let own = 0, rival = 0;
+    matchEvents.forEach(ev => {
+      if (ev.type !== 'goal') return;
+      if (ev.team === 'own') own++; else rival++;
+    });
+    return { own, rival };
+  }
+
+  function renderMatchEvents() {
+    const { own, rival } = computeScore();
+    document.getElementById('score-own').textContent = own;
+    document.getElementById('score-rival').textContent = rival;
+
+    matchEventsList.innerHTML = '';
+    if (!matchEvents.length) {
+      matchEventsList.innerHTML = '<p class="text-xs text-muted text-center">Sin goles ni tarjetas todavía.</p>';
+      return;
+    }
+    matchEvents.slice().sort((a, b) => a.minute - b.minute).forEach(ev => {
+      const icon = ev.type === 'goal' ? '⚽' : ev.type === 'yellow' ? '🟨' : '🟥';
+      const label = ev.type === 'goal'
+        ? (ev.team === 'own' ? `Gol${ev.playerName ? ' — ' + escapeHtml(ev.playerName) : ''}` : 'Gol rival')
+        : `${ev.type === 'yellow' ? 'Amarilla' : 'Roja'} — ${escapeHtml(ev.playerName || '')}`;
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 bg-night/60 border border-border rounded-lg px-3 py-1.5 text-sm';
+      row.innerHTML = `
+        <span class="text-xs text-muted tabular-nums w-9 shrink-0">${ev.minute}'</span>
+        <span class="flex-1 truncate">${icon} ${label}</span>
+        <button type="button" data-remove-event="${ev.id}" class="btn-remove-event shrink-0 text-muted hover:text-red-400 px-1">×</button>
+      `;
+      matchEventsList.appendChild(row);
+    });
+  }
+
+  function addMatchEvent({ type, team, playerId, playerName }) {
+    matchEvents.push({
+      id: `ev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      type, team, playerId, playerName,
+      minute: Math.floor(matchSeconds / 60),
+      half: matchHalf,
+    });
+    renderMatchEvents();
+    saveMatchState();
+  }
+
+  matchEventsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-remove-event');
+    if (!btn) return;
+    matchEvents = matchEvents.filter(ev => ev.id !== btn.dataset.removeEvent);
+    renderMatchEvents();
+    saveMatchState();
+  });
+
+  document.getElementById('btn-goal-own').addEventListener('click', () => {
+    cardPicker.classList.add('hidden');
+    goalOwnPicker.classList.toggle('hidden');
+  });
+  document.getElementById('btn-add-card').addEventListener('click', () => {
+    goalOwnPicker.classList.add('hidden');
+    cardPicker.classList.toggle('hidden');
+  });
+  document.getElementById('btn-goal-rival').addEventListener('click', () => {
+    addMatchEvent({ type: 'goal', team: 'rival', playerId: null, playerName: null });
+  });
+  document.getElementById('btn-confirm-goal-own').addEventListener('click', () => {
+    const select = document.getElementById('select-goal-scorer');
+    const playerId = select.value ? Number(select.value) : null;
+    const player = playerId ? matchPlayers.find(p => p.id === playerId) : null;
+    addMatchEvent({ type: 'goal', team: 'own', playerId, playerName: player ? player.name : null });
+    select.value = '';
+    goalOwnPicker.classList.add('hidden');
+  });
+  document.getElementById('btn-confirm-card').addEventListener('click', () => {
+    const type = document.getElementById('select-card-type').value;
+    const select = document.getElementById('select-card-player');
+    const playerId = select.value ? Number(select.value) : null;
+    if (!playerId) return;
+    const player = matchPlayers.find(p => p.id === playerId);
+    addMatchEvent({ type, team: 'own', playerId, playerName: player ? player.name : null });
+    select.value = '';
+    cardPicker.classList.add('hidden');
+  });
+
+  let matchInfoSaveTimer = null;
+  inputMatchRival.addEventListener('input', () => {
+    clearTimeout(matchInfoSaveTimer);
+    matchInfoSaveTimer = setTimeout(saveMatchState, 800);
+  });
+  inputMatchDate.addEventListener('change', saveMatchState);
+
+  document.getElementById('btn-finish-match').addEventListener('click', async () => {
+    if (!matchPlayers.length) return;
+    const rival = inputMatchRival.value.trim();
+    const confirmed = window.confirm(
+      `Se guardará este partido${rival ? ' contra ' + rival : ''} en el historial y empezará uno nuevo. ¿Continuar?`
+    );
+    if (!confirmed) return;
+    const format = currentUser?.gameFormat === 'F7' ? 'F7' : 'F11';
+    const { error } = await db.from('matches').insert({
+      user_id: currentUser.id,
+      rival: rival || null,
+      match_date: inputMatchDate.value || todayIsoDate(),
+      format,
+      periods: periodsForFormat(format),
+      events: matchEvents,
+      players: matchPlayers,
+    });
+    if (error) { console.error(error); alert('No se pudo guardar el partido en el historial.'); return; }
+    resetMatchUiToZero();
+    await saveMatchState();
   });
 
   // ---------- Scouting y Rival (Módulo 6) ----------
@@ -1048,10 +1469,10 @@
     formLogin.classList.toggle('hidden', !showLogin);
     formRegister.classList.toggle('hidden', showLogin);
     authTabLogin.classList.toggle('bg-turf', showLogin);
-    authTabLogin.classList.toggle('text-base', showLogin);
+    authTabLogin.classList.toggle('text-night', showLogin);
     authTabLogin.classList.toggle('text-muted', !showLogin);
     authTabRegister.classList.toggle('bg-turf', !showLogin);
-    authTabRegister.classList.toggle('text-base', !showLogin);
+    authTabRegister.classList.toggle('text-night', !showLogin);
     authTabRegister.classList.toggle('text-muted', showLogin);
     hideAuthError(loginError);
     hideAuthError(registerError);
@@ -1059,20 +1480,46 @@
   authTabLogin.addEventListener('click', () => setAuthTab('login'));
   authTabRegister.addEventListener('click', () => setAuthTab('register'));
 
-  async function checkIsAdmin() {
-    const { data, error } = await db.from('profiles').select('is_admin').eq('user_id', currentUser.id).maybeSingle();
-    if (error) { console.error('No se pudo comprobar si la cuenta es admin:', error); return false; }
-    return !!(data && data.is_admin);
+  async function loadProfileSettings() {
+    const { data, error } = await db.from('profiles').select('is_admin, game_format').eq('user_id', currentUser.id).maybeSingle();
+    if (error) { console.error('No se pudo cargar el perfil:', error); return { isAdmin: false, gameFormat: 'F11' }; }
+    return {
+      isAdmin: !!(data && data.is_admin),
+      gameFormat: (data && data.game_format === 'F7') ? 'F7' : 'F11',
+    };
   }
+
+  const formatSwitch = document.getElementById('format-switch');
+  function renderFormatSwitch() {
+    formatSwitch.querySelectorAll('.format-btn').forEach(btn => {
+      const active = btn.dataset.format === currentUser.gameFormat;
+      btn.classList.toggle('bg-turf', active);
+      btn.classList.toggle('text-night', active);
+      btn.classList.toggle('text-muted', !active);
+    });
+  }
+  formatSwitch.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.format-btn');
+    if (!btn || btn.dataset.format === currentUser.gameFormat) return;
+    currentUser.gameFormat = btn.dataset.format;
+    renderFormatSwitch();
+    renderPitch();
+    document.getElementById('btn-toggle-half').textContent = periodLabel(matchHalf);
+    const { error } = await db.from('profiles').update({ game_format: currentUser.gameFormat }).eq('user_id', currentUser.id);
+    if (error) console.error('No se pudo guardar el formato de equipo:', error);
+  });
 
   async function bootApp() {
     authScreen.classList.add('hidden');
     appRoot.classList.remove('hidden');
     appRoot.classList.add('flex');
     document.getElementById('current-username').textContent = currentUser.username;
-    currentUser.isAdmin = await checkIsAdmin();
+    const profileSettings = await loadProfileSettings();
+    currentUser.isAdmin = profileSettings.isAdmin;
+    currentUser.gameFormat = profileSettings.gameFormat;
     document.getElementById('nav-admin-item').classList.toggle('hidden', !currentUser.isAdmin);
-    await Promise.all([loadPlayers(), renderPitch(), loadExercises(), loadScoutingData()]);
+    renderFormatSwitch();
+    await Promise.all([loadPlayers(), renderPitch(), loadExercises(), loadScoutingData(), loadWeekSessions()]);
     document.getElementById('today-date').textContent =
       new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
     requestAnimationFrame(() => {
@@ -1190,7 +1637,7 @@
       `Esto borrará TODA la plantilla, pizarra, entrenamientos y scouting de "${username}". La cuenta de acceso no se borra (eso se hace desde Supabase). ¿Continuar?`
     );
     if (!confirmed) return;
-    const tables = ['players', 'pizarra', 'exercises', 'scouting_rival', 'scouting_targets', 'match_state'];
+    const tables = ['players', 'pizarra', 'exercises', 'scouting_rival', 'scouting_targets', 'match_state', 'matches', 'training_sessions', 'training_attendance'];
     for (const table of tables) {
       const { error } = await db.from(table).delete().eq('user_id', userId);
       if (error) console.error(`No se pudo borrar ${table} para ${username}:`, error);
