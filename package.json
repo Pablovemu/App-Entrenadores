@@ -1,0 +1,13 @@
+{
+  "name": "oficina-del-entrenador",
+  "version": "1.0.0",
+  "private": true,
+  "description": "App de gestion para entrenadores de futbol (plantilla, pizarra tactica, entrenamientos, partido en vivo, scouting).",
+  "scripts": {
+    "css:build": "tailwindcss -c tailwind.config.js -i ./css/input.css -o ./css/styles.css --minify",
+    "css:watch": "tailwindcss -c tailwind.config.js -i ./css/input.css -o ./css/styles.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3"
+  }
+}

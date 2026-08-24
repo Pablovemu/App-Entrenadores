@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Estilos propios de la app (no generados por Tailwind) */
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+.nav-btn { position: relative; }
+.nav-btn .label { letter-spacing: 0.04em; }
+.pitchbg {
+  background-image:
+    linear-gradient(rgba(63,163,77,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(63,163,77,0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.scrollbar-thin::-webkit-scrollbar { width: 6px; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #22301F; border-radius: 4px; }
+.screen { display: none; }
+.screen.active { display: block; }
+#sidebar { transition: transform 0.25s ease; }
+#ball-marker { transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+.modal-backdrop { transition: opacity 0.2s ease; }
