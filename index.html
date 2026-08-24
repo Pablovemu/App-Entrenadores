@@ -142,6 +142,12 @@
             <span class="label font-display font-600 uppercase text-sm">Scouting y Rival</span>
           </button>
         </li>
+        <li id="nav-admin-item" class="hidden">
+          <button data-screen="admin" class="nav-btn w-full flex items-center gap-4 pl-10 pr-3 py-3 rounded-lg text-left text-muted hover:text-ink hover:bg-card transition-colors">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3Z"/><path d="M9.5 12l1.8 1.8L15 10"/></svg>
+            <span class="label font-display font-600 uppercase text-sm">Panel Admin</span>
+          </button>
+        </li>
       </ul>
     </nav>
 
@@ -428,6 +434,15 @@
         </div>
 
         <div id="scouting-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+      </section>
+
+      <!-- ---------- SCREEN: PANEL ADMIN (solo visible para cuentas admin) ---------- -->
+      <section id="screen-admin" class="screen">
+        <div class="flex items-center justify-between mb-6 gap-4 flex-wrap">
+          <span class="text-sm text-muted"><span id="admin-users-count">0</span> cuentas registradas</span>
+          <p class="text-xs text-muted max-w-sm text-right">Para eliminar por completo el acceso de una cuenta (usuario + contraseña), hazlo desde el panel de Supabase → Authentication → Users.</p>
+        </div>
+        <div id="admin-users-list" class="space-y-3"></div>
       </section>
 
     </div>

@@ -17,6 +17,10 @@
     return `${username}@users.oficinaentrenadores.app`;
   }
 
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  }
+
   let currentUser = null; // { id, username } una vez ha iniciado sesión
 
   // ---------- Datos de la plantilla ----------
@@ -140,6 +144,7 @@
     entrenamientos:  { eyebrow: 'Módulo · Sesiones',  title: 'Entrenamientos' },
     partido:         { eyebrow: 'Módulo · Partido',   title: 'Partido en Vivo' },
     scouting:        { eyebrow: 'Módulo · Scouting',  title: 'Scouting y Rival' },
+    admin:           { eyebrow: 'Administración',     title: 'Panel Admin' },
   };
 
   function positionBallMarker(btn) {
@@ -166,8 +171,11 @@
       resizeCanvas();
     }
     if (key === 'partido' && !matchInitialized) {
-      initMatchSquad();
-      renderMatchLists();
+      matchInitialized = true;
+      loadMatchState().then(renderMatchLists);
+    }
+    if (key === 'admin') {
+      loadAdminPanel();
     }
   }
 
@@ -654,9 +662,11 @@
   });
 
   // ---------- Partido en Vivo (Módulo 5) ----------
-  // De momento este módulo no se guarda entre sesiones ni se sincroniza con
-  // la cuenta: el partido en vivo corre solo en memoria, en el dispositivo
-  // que lo lleva. Si recargas la página a mitad de partido, se reinicia.
+  // Se guarda en Supabase (tabla match_state): cronómetro, parte y minutos
+  // por jugador sobreviven a un refresco de página o a cerrar la pestaña.
+  // Al recargar, el partido queda en pausa (hay que pulsar "Reanudar") para
+  // no tener que calcular el tiempo transcurrido mientras la app no estaba
+  // abierta.
   let matchPlayers = [];
   let matchInitialized = false;
   let matchRunning = false;
@@ -701,6 +711,57 @@
     matchHalf = 1;
     matchClockEl.textContent = formatClock(matchSeconds);
     document.getElementById('btn-toggle-half').textContent = '1ª Parte';
+    matchInitialized = true;
+  }
+
+  async function saveMatchState() {
+    if (!currentUser) return;
+    const { error } = await db.from('match_state').upsert({
+      user_id: currentUser.id,
+      half: matchHalf,
+      seconds: matchSeconds,
+      players: matchPlayers,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) console.error('No se pudo guardar el estado del partido:', error);
+  }
+
+  // Se llama una vez, la primera vez que se entra en la pantalla de Partido:
+  // intenta recuperar un partido guardado; si la plantilla ha cambiado desde
+  // entonces (jugador añadido/borrado), empieza uno nuevo para no arrastrar
+  // datos inconsistentes. El partido recuperado siempre queda en pausa.
+  async function loadMatchState() {
+    if (!players.length) {
+      matchPlayers = [];
+      matchEmptyState.classList.remove('hidden');
+      matchContent.classList.add('hidden');
+      return;
+    }
+    matchEmptyState.classList.add('hidden');
+    matchContent.classList.remove('hidden');
+
+    const { data: saved, error } = await db.from('match_state').select('*').maybeSingle();
+    if (error) console.error('No se pudo cargar el estado del partido:', error);
+
+    const currentIds = new Set(players.map(p => p.id));
+    const savedPlayers = saved && Array.isArray(saved.players) ? saved.players : null;
+    const savedMatchesSquad = savedPlayers && savedPlayers.length === players.length &&
+      savedPlayers.every(p => currentIds.has(p.id));
+
+    if (savedMatchesSquad) {
+      matchPlayers = savedPlayers;
+      matchSeconds = saved.seconds || 0;
+      matchHalf = saved.half || 1;
+    } else {
+      initMatchSquad();
+    }
+    matchRunning = false;
+    clearInterval(matchInterval);
+    matchClockEl.textContent = formatClock(matchSeconds);
+    document.getElementById('icon-play').classList.remove('hidden');
+    document.getElementById('icon-pause').classList.add('hidden');
+    document.getElementById('clock-btn-label').textContent = 'Iniciar';
+    document.getElementById('btn-toggle-half').textContent = matchHalf === 1 ? '1ª Parte' : '2ª Parte';
     matchInitialized = true;
   }
 
@@ -776,13 +837,22 @@
     inPlayer.onField = true;
     inPlayer.seconds = 0;
     renderMatchLists();
+    saveMatchState();
   });
 
+  // El reloj guarda solo cada 5 segundos (y en cada acción manual, más abajo)
+  // para no disparar una escritura a la base de datos cada segundo.
+  let matchTicksSinceSave = 0;
   function tickMatchClock() {
     matchSeconds++;
     matchPlayers.forEach(p => { if (p.onField) p.seconds++; });
     matchClockEl.textContent = formatClock(matchSeconds);
     renderMatchLists();
+    matchTicksSinceSave++;
+    if (matchTicksSinceSave >= 5) {
+      matchTicksSinceSave = 0;
+      saveMatchState();
+    }
   }
 
   document.getElementById('btn-toggle-clock').addEventListener('click', () => {
@@ -794,6 +864,7 @@
       matchInterval = setInterval(tickMatchClock, 1000);
     } else {
       clearInterval(matchInterval);
+      saveMatchState();
     }
   });
 
@@ -807,11 +878,13 @@
     document.getElementById('btn-toggle-half').textContent = '1ª Parte';
     initMatchSquad();
     renderMatchLists();
+    saveMatchState();
   });
 
   document.getElementById('btn-toggle-half').addEventListener('click', (e) => {
     matchHalf = matchHalf === 1 ? 2 : 1;
     e.target.textContent = matchHalf === 1 ? '1ª Parte' : '2ª Parte';
+    saveMatchState();
   });
 
   // ---------- Scouting y Rival (Módulo 6) ----------
@@ -986,11 +1059,19 @@
   authTabLogin.addEventListener('click', () => setAuthTab('login'));
   authTabRegister.addEventListener('click', () => setAuthTab('register'));
 
+  async function checkIsAdmin() {
+    const { data, error } = await db.from('profiles').select('is_admin').eq('user_id', currentUser.id).maybeSingle();
+    if (error) { console.error('No se pudo comprobar si la cuenta es admin:', error); return false; }
+    return !!(data && data.is_admin);
+  }
+
   async function bootApp() {
     authScreen.classList.add('hidden');
     appRoot.classList.remove('hidden');
     appRoot.classList.add('flex');
     document.getElementById('current-username').textContent = currentUser.username;
+    currentUser.isAdmin = await checkIsAdmin();
+    document.getElementById('nav-admin-item').classList.toggle('hidden', !currentUser.isAdmin);
     await Promise.all([loadPlayers(), renderPitch(), loadExercises(), loadScoutingData()]);
     document.getElementById('today-date').textContent =
       new Date().toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
@@ -1030,6 +1111,7 @@
       return;
     }
     currentUser = { id: data.user.id, username };
+    await db.from('profiles').insert({ user_id: currentUser.id, username });
     await seedDefaultData(currentUser.id);
     await bootApp();
   });
@@ -1048,6 +1130,73 @@
       await bootApp();
     }
   })();
+
+  // ---------- Panel de administrador ----------
+  // Solo lo ve quien tenga is_admin=true en la tabla profiles (ver
+  // supabase_migration_02_admin_and_match.sql). Deja ver todas las cuentas
+  // registradas y vaciar los datos de un equipo. Borrar la cuenta de acceso
+  // en sí (usuario + contraseña) se sigue haciendo desde el panel de
+  // Supabase, porque eso requiere la clave secreta "service_role", que
+  // nunca debe ir en el código de un sitio estático.
+  const adminUsersList = document.getElementById('admin-users-list');
+  const adminUsersCountEl = document.getElementById('admin-users-count');
+
+  async function loadAdminPanel() {
+    adminUsersList.innerHTML = '<p class="text-sm text-muted">Cargando…</p>';
+    const [{ data: profiles, error: profilesError }, { data: playerRows, error: playersError }] = await Promise.all([
+      db.from('profiles').select('*').order('created_at', { ascending: true }),
+      db.from('players').select('user_id'),
+    ]);
+    if (profilesError) {
+      console.error(profilesError);
+      adminUsersList.innerHTML = '<p class="text-sm text-red-400">No se pudo cargar la lista de usuarios.</p>';
+      return;
+    }
+    if (playersError) console.error(playersError);
+    const counts = {};
+    (playerRows || []).forEach(r => { counts[r.user_id] = (counts[r.user_id] || 0) + 1; });
+
+    adminUsersCountEl.textContent = profiles.length;
+    adminUsersList.innerHTML = '';
+    profiles.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'bg-card border border-border rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap';
+      const dateStr = p.created_at
+        ? new Date(p.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })
+        : '—';
+      row.innerHTML = `
+        <div class="min-w-0">
+          <p class="font-display font-600 text-base truncate">
+            ${escapeHtml(p.username)}
+            ${p.is_admin ? '<span class="ml-2 text-xs uppercase text-gold">Admin</span>' : ''}
+            ${p.user_id === currentUser.id ? '<span class="ml-2 text-xs uppercase text-muted">(tú)</span>' : ''}
+          </p>
+          <p class="text-xs text-muted mt-1">Registrado el ${dateStr} · ${counts[p.user_id] || 0} jugadores en su plantilla</p>
+        </div>
+        <button data-wipe-user="${p.user_id}" data-wipe-username="${escapeHtml(p.username)}" class="btn-wipe-user shrink-0 border border-red-500/30 hover:bg-red-500/15 text-red-400 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+          Vaciar datos
+        </button>
+      `;
+      adminUsersList.appendChild(row);
+    });
+  }
+
+  adminUsersList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-wipe-user');
+    if (!btn) return;
+    const userId = btn.dataset.wipeUser;
+    const username = btn.dataset.wipeUsername;
+    const confirmed = window.confirm(
+      `Esto borrará TODA la plantilla, pizarra, entrenamientos y scouting de "${username}". La cuenta de acceso no se borra (eso se hace desde Supabase). ¿Continuar?`
+    );
+    if (!confirmed) return;
+    const tables = ['players', 'pizarra', 'exercises', 'scouting_rival', 'scouting_targets', 'match_state'];
+    for (const table of tables) {
+      const { error } = await db.from(table).delete().eq('user_id', userId);
+      if (error) console.error(`No se pudo borrar ${table} para ${username}:`, error);
+    }
+    await loadAdminPanel();
+  });
 
   // ---------- Exportar / Importar datos (respaldo / copia manual) ----------
   // Los datos ya viven en el servidor y se ven desde cualquier dispositivo,
