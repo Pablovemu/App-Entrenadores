@@ -109,7 +109,7 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
 
 **Calendario semanal (Módulo 4)**
 - [x] Calendario con fechas reales, navegable semana a semana, con creación de sesiones (a mano o arrastrando un ejercicio) y asistencia a entrenamientos por sesión.
-- [ ] No se pueden mover/arrastrar sesiones ya creadas de un día a otro (hay que borrarla y crearla de nuevo).
+- [x] Mover/arrastrar sesiones ya creadas de un día a otro con drag-and-drop (ya no hay que borrarla y crearla de nuevo).
 
 **Partido (Módulo 5)**
 - [x] Persistencia añadida (tabla `match_state`, ver arriba).
