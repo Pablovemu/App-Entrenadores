@@ -5,9 +5,11 @@
   "description": "App de gestion para entrenadores de futbol (plantilla, pizarra tactica, entrenamientos, partido en vivo, scouting).",
   "scripts": {
     "css:build": "tailwindcss -c tailwind.config.js -i ./css/input.css -o ./css/styles.css --minify",
-    "css:watch": "tailwindcss -c tailwind.config.js -i ./css/input.css -o ./css/styles.css --watch"
+    "css:watch": "tailwindcss -c tailwind.config.js -i ./css/input.css -o ./css/styles.css --watch",
+    "test:smoke": "node scripts/smoke-test.js"
   },
   "devDependencies": {
+    "playwright": "^1.62.1",
     "tailwindcss": "^3"
   }
 }
