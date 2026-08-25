@@ -338,12 +338,12 @@
           <div class="flex items-center justify-between mb-2 gap-3 flex-wrap">
             <p class="text-xs uppercase tracking-widest text-turf font-display font-600">Calendario semanal</p>
             <div class="flex items-center gap-2">
-              <button id="btn-week-prev" type="button" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana anterior">
+              <button id="btn-week-prev" type="button" aria-label="Semana anterior" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana anterior">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
               </button>
               <button id="btn-week-today" type="button" class="px-3 py-1.5 rounded-lg border border-border hover:border-turf/50 text-xs font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Hoy</button>
               <span id="calendar-week-label" class="text-sm text-muted min-w-[130px] text-center"></span>
-              <button id="btn-week-next" type="button" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana siguiente">
+              <button id="btn-week-next" type="button" aria-label="Semana siguiente" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana siguiente">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
             </div>
@@ -356,11 +356,11 @@
       </section>
 
       <!-- ============ MODAL: NUEVA/EDITAR SESIÓN DE ENTRENAMIENTO ============ -->
-      <div id="session-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+      <div id="session-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="session-modal-title">
         <div class="bg-panel border border-border rounded-xl w-full max-w-lg p-6 max-h-[88vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-5">
             <h2 id="session-modal-title" class="font-display font-700 text-xl uppercase">Nueva sesión</h2>
-            <button id="session-modal-close" class="text-muted hover:text-ink">
+            <button id="session-modal-close" type="button" aria-label="Cerrar" class="text-muted hover:text-ink">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -408,11 +408,11 @@
       </div>
 
       <!-- ============ MODAL: DETALLE DE SESIÓN + ASISTENCIA ============ -->
-      <div id="session-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+      <div id="session-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="session-detail-title">
         <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6 max-h-[88vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-1">
             <h2 id="session-detail-title" class="font-display font-700 text-xl uppercase">—</h2>
-            <button id="session-detail-close" class="text-muted hover:text-ink">
+            <button id="session-detail-close" type="button" aria-label="Cerrar" class="text-muted hover:text-ink">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -433,11 +433,11 @@
       </div>
 
       <!-- ============ MODAL: NUEVO EJERCICIO ============ -->
-      <div id="exercise-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+      <div id="exercise-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="exercise-modal-title">
         <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
           <div class="flex items-center justify-between mb-5">
-            <h2 class="font-display font-700 text-xl uppercase">Nuevo ejercicio</h2>
-            <button id="exercise-modal-close" class="text-muted hover:text-ink">
+            <h2 id="exercise-modal-title" class="font-display font-700 text-xl uppercase">Nuevo ejercicio</h2>
+            <button id="exercise-modal-close" type="button" aria-label="Cerrar" class="text-muted hover:text-ink">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
@@ -575,16 +575,30 @@
       </section>
 
       <!-- ============ MODAL: DETALLE DE PARTIDO (HISTORIAL) ============ -->
-      <div id="match-history-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+      <div id="match-history-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="history-detail-rival">
         <div class="bg-panel border border-border rounded-xl w-full max-w-lg p-6 max-h-[85vh] overflow-y-auto">
           <div class="flex items-center justify-between mb-1">
             <h2 id="history-detail-rival" class="font-display font-700 text-xl uppercase truncate">—</h2>
-            <button id="history-detail-close" class="text-muted hover:text-ink shrink-0">
+            <button id="history-detail-close" type="button" aria-label="Cerrar" class="text-muted hover:text-ink shrink-0">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
             </button>
           </div>
-          <p id="history-detail-meta" class="text-xs text-muted mb-1">—</p>
-          <p id="history-detail-score" class="font-display font-700 text-3xl mb-4">0 — 0</p>
+
+          <div id="history-detail-view-fields">
+            <p id="history-detail-meta" class="text-xs text-muted mb-1">—</p>
+            <p id="history-detail-score" class="font-display font-700 text-3xl mb-4">0 — 0</p>
+          </div>
+
+          <div id="history-detail-edit-fields" class="hidden grid grid-cols-[1fr_140px] gap-3 mb-4">
+            <div>
+              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Rival</label>
+              <input id="history-edit-rival" type="text" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+            </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Fecha</label>
+              <input id="history-edit-date" type="date" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+            </div>
+          </div>
 
           <p class="text-xs uppercase tracking-wide text-muted mb-2">Alineación y minutos</p>
           <div id="history-detail-players" class="space-y-1.5 mb-4"></div>
@@ -592,9 +606,37 @@
           <p class="text-xs uppercase tracking-wide text-muted mb-2">Goles y tarjetas</p>
           <div id="history-detail-events" class="space-y-1.5 mb-4"></div>
 
-          <button id="btn-delete-match-history" type="button" class="w-full border border-red-500/30 hover:bg-red-500/15 text-red-400 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
-            Eliminar partido del historial
-          </button>
+          <div id="history-detail-edit-add-event" class="hidden bg-card border border-border rounded-lg p-3 mb-4">
+            <p class="text-xs uppercase tracking-wide text-muted mb-2">Añadir gol o tarjeta</p>
+            <div class="grid grid-cols-[1fr_1fr_70px] gap-2 mb-2">
+              <select id="history-edit-event-type" class="bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">
+                <option value="goal-own">Gol propio</option>
+                <option value="goal-rival">Gol rival</option>
+                <option value="yellow">Amarilla</option>
+                <option value="red">Roja</option>
+              </select>
+              <select id="history-edit-event-player" class="bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink"></select>
+              <input id="history-edit-event-minute" type="number" min="0" placeholder="Min" class="bg-night border border-border rounded-lg px-2 py-1.5 text-sm text-ink">
+            </div>
+            <button id="btn-history-add-event" type="button" class="w-full border border-turf/40 text-turf hover:bg-turf/10 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">Añadir</button>
+          </div>
+
+          <div id="history-detail-view-actions" class="flex gap-3">
+            <button id="btn-edit-match-history" type="button" class="flex-1 border border-border hover:bg-card text-ink font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+              Editar partido
+            </button>
+            <button id="btn-delete-match-history" type="button" class="flex-1 border border-red-500/30 hover:bg-red-500/15 text-red-400 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+              Eliminar partido
+            </button>
+          </div>
+          <div id="history-detail-edit-actions" class="hidden gap-3">
+            <button id="btn-cancel-edit-match-history" type="button" class="flex-1 border border-border hover:bg-card text-ink font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+              Cancelar
+            </button>
+            <button id="btn-save-match-history" type="button" class="flex-1 bg-turf hover:bg-turfline text-night font-display font-700 uppercase text-xs tracking-wide px-3 py-2.5 rounded-lg transition-colors">
+              Guardar cambios
+            </button>
+          </div>
         </div>
       </div>
 
@@ -616,6 +658,21 @@
           </div>
           <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Notas de scouting</label>
           <textarea id="input-rival-notes" rows="5" placeholder="Puntos fuertes, jugadores clave a vigilar, plan de partido…" class="w-full bg-night border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf resize-y"></textarea>
+          <div class="flex justify-end mt-3">
+            <button id="btn-save-scouting-report" type="button" class="flex items-center gap-2 border border-turf/40 text-turf hover:bg-turf/10 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/><path d="M17 21v-8H7v8M7 3v5h8"/></svg>
+              Guardar informe en histórico
+            </button>
+          </div>
+        </div>
+
+        <!-- Histórico de informes de rival -->
+        <div class="mb-8">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs uppercase tracking-widest text-muted font-display font-600">Informes anteriores</p>
+            <span class="text-sm text-muted"><span id="scouting-reports-count">0</span> guardados</span>
+          </div>
+          <div id="scouting-reports-list" class="space-y-2"></div>
         </div>
 
         <!-- Lista de seguimiento -->
@@ -646,11 +703,11 @@
   <!-- ============ /APP ============ -->
 
   <!-- ============ MODAL: NUEVO JUGADOR ============ -->
-  <div id="modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+  <div id="modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="player-modal-title">
     <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
       <div class="flex items-center justify-between mb-5">
         <h2 id="player-modal-title" class="font-display font-700 text-xl uppercase">Nuevo jugador</h2>
-        <button id="modal-close" class="text-muted hover:text-ink">
+        <button id="modal-close" type="button" aria-label="Cerrar" class="text-muted hover:text-ink">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
@@ -687,14 +744,14 @@
   </div>
 
   <!-- ============ MODAL: FICHA DE JUGADOR (estadísticas) ============ -->
-  <div id="player-stats-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+  <div id="player-stats-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="player-stats-name">
     <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
       <div class="flex items-center justify-between mb-5">
         <div class="min-w-0">
           <h2 id="player-stats-name" class="font-display font-700 text-xl uppercase truncate">—</h2>
           <p id="player-stats-position" class="text-xs uppercase tracking-wide text-muted mt-1">—</p>
         </div>
-        <button id="player-stats-close" class="text-muted hover:text-ink shrink-0">
+        <button id="player-stats-close" type="button" aria-label="Cerrar" class="text-muted hover:text-ink shrink-0">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
@@ -727,11 +784,11 @@
   </div>
 
   <!-- ============ MODAL: NUEVO FICHAJE (SCOUTING) ============ -->
-  <div id="scout-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4">
+  <div id="scout-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/70 z-50 hidden items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="scout-modal-title">
     <div class="bg-panel border border-border rounded-xl w-full max-w-md p-6">
       <div class="flex items-center justify-between mb-5">
-        <h2 class="font-display font-700 text-xl uppercase">Nuevo fichaje</h2>
-        <button id="scout-modal-close" class="text-muted hover:text-ink">
+        <h2 id="scout-modal-title" class="font-display font-700 text-xl uppercase">Nuevo fichaje</h2>
+        <button id="scout-modal-close" type="button" aria-label="Cerrar" class="text-muted hover:text-ink">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
@@ -754,6 +811,14 @@
             <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Club actual</label>
             <input id="input-scout-club" type="text" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
           </div>
+        </div>
+        <div>
+          <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Estado</label>
+          <select id="input-scout-status" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+            <option value="Observación">Observación</option>
+            <option value="Contactado">Contactado</option>
+            <option value="Descartado">Descartado</option>
+          </select>
         </div>
         <div>
           <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Nota</label>

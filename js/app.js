@@ -113,7 +113,7 @@
               <span class="font-display font-700 text-xl">${p.number}</span>
             </div>
             <div class="min-w-0 flex-1">
-              <p class="font-display font-600 text-base truncate">${escapeHtml(p.name)}</p>
+              <p class="font-display font-600 text-base leading-snug line-clamp-2" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</p>
               <div class="flex items-center gap-2 mt-1">
                 <span class="w-1.5 h-1.5 rounded-full ${s.dot}"></span>
                 <span class="text-xs uppercase tracking-wide ${s.text}">${s.label}</span>
@@ -121,12 +121,12 @@
             </div>
           </button>
           <div class="shrink-0 flex flex-col items-end gap-2">
-            <button data-present-id="${p.id}" class="btn-toggle-present w-5 h-5 rounded-full border ${p.present ? 'bg-turf border-turf' : 'bg-transparent border-muted/40'} transition-colors" title="${p.present ? 'Disponible (clic para marcar ausente)' : 'No disponible (clic para marcar presente)'}"></button>
+            <button data-present-id="${p.id}" class="btn-toggle-present w-5 h-5 rounded-full border ${p.present ? 'bg-turf border-turf' : 'bg-transparent border-muted/40'} transition-colors" aria-label="${p.present ? 'Disponible (clic para marcar ausente)' : 'No disponible (clic para marcar presente)'}" title="${p.present ? 'Disponible (clic para marcar ausente)' : 'No disponible (clic para marcar presente)'}"></button>
             <div class="flex items-center gap-1">
-              <button data-edit-id="${p.id}" class="btn-edit-player text-muted hover:text-turf transition-colors p-1" title="Editar jugador">
+              <button data-edit-id="${p.id}" class="btn-edit-player text-muted hover:text-turf transition-colors p-1" aria-label="Editar jugador" title="Editar jugador">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
               </button>
-              <button data-delete-id="${p.id}" class="btn-delete-player text-muted hover:text-red-400 transition-colors p-1" title="Eliminar jugador">
+              <button data-delete-id="${p.id}" class="btn-delete-player text-muted hover:text-red-400 transition-colors p-1" aria-label="Eliminar jugador" title="Eliminar jugador">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
               </button>
             </div>
@@ -138,6 +138,15 @@
     document.getElementById('stat-total-players').textContent = players.length;
     document.getElementById('stat-present-players').textContent = players.filter(p => p.present).length;
   }
+
+  // Accesibilidad: la tecla Escape cierra el modal abierto (todos los
+  // backdrops ya cierran al pulsar fuera, así que reutilizamos ese cierre).
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+      if (!backdrop.classList.contains('hidden')) backdrop.click();
+    });
+  });
 
   // ---------- Navegación entre pantallas ----------
   const navButtons = document.querySelectorAll('.nav-btn');
@@ -688,7 +697,7 @@
           </div>
           <div class="flex items-start justify-between gap-2">
             <p class="font-display font-700 text-lg mb-1">${ex.name}</p>
-            <button data-delete-exercise="${ex.id}" class="btn-delete-exercise shrink-0 text-muted hover:text-red-400 transition-colors p-1" title="Eliminar ejercicio">
+            <button data-delete-exercise="${ex.id}" class="btn-delete-exercise shrink-0 text-muted hover:text-red-400 transition-colors p-1" aria-label="Eliminar ejercicio" title="Eliminar ejercicio">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
             </button>
           </div>
@@ -822,7 +831,7 @@
       col.innerHTML = `
         <div class="flex items-center justify-between mb-2">
           <p class="text-xs uppercase tracking-wide ${isToday ? 'text-turf' : 'text-muted'} font-display font-600">${DAY_NAMES[i]} <span class="opacity-70">${day.getDate()}</span></p>
-          <button type="button" data-add-day="${iso}" class="btn-add-session text-muted hover:text-turf transition-colors" title="Añadir sesión">
+          <button type="button" data-add-day="${iso}" class="btn-add-session text-muted hover:text-turf transition-colors" aria-label="Añadir sesión" title="Añadir sesión">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
           </button>
         </div>
@@ -927,7 +936,7 @@
             ${SESSION_BLOCKS.map(b => `<option value="${b}" ${item.block === b ? 'selected' : ''}>${b}</option>`).join('')}
           </select>
           <span class="flex-1"></span>
-          <button type="button" data-remove-item="${idx}" class="btn-remove-session-item text-muted hover:text-red-400 p-1">
+          <button type="button" data-remove-item="${idx}" class="btn-remove-session-item text-muted hover:text-red-400 p-1" aria-label="Quitar ejercicio del plan">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
           </button>
         </div>
@@ -1136,7 +1145,7 @@
       row.innerHTML = `
         <span class="w-7 h-7 shrink-0 rounded-full bg-night border border-border flex items-center justify-center font-display font-700 text-xs">${p.number}</span>
         <span class="flex-1 min-w-0 truncate font-display font-600 text-sm">${escapeHtml(p.name)}</span>
-        <button type="button" data-attendance-player="${p.id}" class="btn-toggle-attendance w-5 h-5 rounded-full border ${present ? 'bg-turf border-turf' : 'bg-transparent border-muted/40'} transition-colors" title="${present ? 'Presente (clic para marcar ausente)' : 'Ausente (clic para marcar presente)'}"></button>
+        <button type="button" data-attendance-player="${p.id}" class="btn-toggle-attendance w-5 h-5 rounded-full border ${present ? 'bg-turf border-turf' : 'bg-transparent border-muted/40'} transition-colors" aria-label="${present ? 'Presente (clic para marcar ausente)' : 'Ausente (clic para marcar presente)'}" title="${present ? 'Presente (clic para marcar ausente)' : 'Ausente (clic para marcar presente)'}"></button>
       `;
       list.appendChild(row);
     });
@@ -1323,7 +1332,7 @@
         <span class="w-8 h-8 shrink-0 rounded-full bg-night border border-turf/50 flex items-center justify-center font-display font-700 text-sm">${p.number}</span>
         <span class="flex-1 min-w-0 truncate font-display font-600 text-sm">${escapeHtml(p.name)}</span>
         <span class="font-display font-700 text-sm tabular-nums text-turf">${formatClock(p.seconds)}</span>
-        <button data-sub-out="${p.id}" class="btn-open-sub text-muted hover:text-ink p-1" title="Sustituir">
+        <button data-sub-out="${p.id}" class="btn-open-sub text-muted hover:text-ink p-1" aria-label="Sustituir" title="Sustituir">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"/><path d="M21 7H9a4 4 0 0 0-4 4"/><path d="M7 21l-4-4 4-4"/><path d="M3 17h12a4 4 0 0 0 4-4"/></svg>
         </button>
       `;
@@ -1481,7 +1490,7 @@
       row.innerHTML = `
         <span class="text-xs text-muted tabular-nums w-9 shrink-0">${ev.minute}'</span>
         <span class="flex-1 truncate">${icon} ${label}</span>
-        <button type="button" data-remove-event="${ev.id}" class="btn-remove-event shrink-0 text-muted hover:text-red-400 px-1">×</button>
+        <button type="button" data-remove-event="${ev.id}" class="btn-remove-event shrink-0 text-muted hover:text-red-400 px-1" aria-label="Eliminar evento">×</button>
       `;
       matchEventsList.appendChild(row);
     });
@@ -1614,10 +1623,121 @@
     openMatchHistoryDetail(Number(card.dataset.matchId));
   });
 
+  let historyEditMode = false;
+  let historyEditEvents = [];
+  const historyDetailViewFields = document.getElementById('history-detail-view-fields');
+  const historyDetailEditFields = document.getElementById('history-detail-edit-fields');
+  const historyDetailViewActions = document.getElementById('history-detail-view-actions');
+  const historyDetailEditActions = document.getElementById('history-detail-edit-actions');
+  const historyDetailEditAddEvent = document.getElementById('history-detail-edit-add-event');
+  const historyEditRivalInput = document.getElementById('history-edit-rival');
+  const historyEditDateInput = document.getElementById('history-edit-date');
+  const historyEditEventPlayerSelect = document.getElementById('history-edit-event-player');
+
+  function setHistoryEditMode(on) {
+    historyEditMode = on;
+    historyDetailViewFields.classList.toggle('hidden', on);
+    historyDetailEditFields.classList.toggle('hidden', !on);
+    historyDetailViewActions.classList.toggle('hidden', on);
+    historyDetailEditActions.classList.toggle('hidden', !on);
+    historyDetailEditActions.classList.toggle('flex', on);
+    historyDetailEditAddEvent.classList.toggle('hidden', !on);
+  }
+
+  function renderHistoryDetailEvents(m) {
+    const eventsList = document.getElementById('history-detail-events');
+    eventsList.innerHTML = '';
+    const events = historyEditMode ? historyEditEvents : (m.events || []);
+    if (!events.length) {
+      eventsList.innerHTML = '<p class="text-xs text-muted">Sin goles ni tarjetas en este partido.</p>';
+      return;
+    }
+    events.slice().sort((a, b) => a.minute - b.minute).forEach(ev => {
+      const icon = ev.type === 'goal' ? '⚽' : ev.type === 'yellow' ? '🟨' : '🟥';
+      const label = ev.type === 'goal'
+        ? (ev.team === 'own' ? `Gol${ev.playerName ? ' — ' + escapeHtml(ev.playerName) : ''}` : 'Gol rival')
+        : `${ev.type === 'yellow' ? 'Amarilla' : 'Roja'} — ${escapeHtml(ev.playerName || '')}`;
+      const row = document.createElement('div');
+      row.className = 'flex items-center gap-2 bg-night/60 border border-border rounded-lg px-3 py-1.5 text-sm';
+      row.innerHTML = `
+        <span class="text-xs text-muted tabular-nums w-9 shrink-0">${ev.minute}'</span>
+        <span class="flex-1 truncate">${icon} ${label}</span>
+        ${historyEditMode ? `<button type="button" data-remove-history-event="${ev.id}" class="btn-remove-history-event shrink-0 text-muted hover:text-red-400 px-1" aria-label="Eliminar evento">×</button>` : ''}
+      `;
+      eventsList.appendChild(row);
+    });
+  }
+
+  document.getElementById('history-detail-events').addEventListener('click', (e) => {
+    const btn = e.target.closest('.btn-remove-history-event');
+    if (!btn || !historyEditMode) return;
+    historyEditEvents = historyEditEvents.filter(ev => ev.id !== btn.dataset.removeHistoryEvent);
+    const m = matchHistory.find(x => x.id === currentHistoryMatchId);
+    renderHistoryDetailEvents(m);
+  });
+
+  document.getElementById('btn-edit-match-history').addEventListener('click', () => {
+    const m = matchHistory.find(x => x.id === currentHistoryMatchId);
+    if (!m) return;
+    historyEditEvents = JSON.parse(JSON.stringify(m.events || []));
+    historyEditRivalInput.value = m.rival || '';
+    historyEditDateInput.value = m.match_date || '';
+    const options = (m.players || []).slice().sort((a, b) => a.number - b.number)
+      .map(p => `<option value="${p.id}">#${p.number} ${escapeHtml(p.name)}</option>`).join('');
+    historyEditEventPlayerSelect.innerHTML = `<option value="">Sin especificar</option>${options}`;
+    document.getElementById('history-edit-event-minute').value = '';
+    setHistoryEditMode(true);
+    renderHistoryDetailEvents(m);
+  });
+
+  document.getElementById('btn-cancel-edit-match-history').addEventListener('click', () => {
+    const m = matchHistory.find(x => x.id === currentHistoryMatchId);
+    if (!m) return;
+    setHistoryEditMode(false);
+    renderHistoryDetailEvents(m);
+  });
+
+  document.getElementById('btn-history-add-event').addEventListener('click', () => {
+    const typeValue = document.getElementById('history-edit-event-type').value;
+    const minute = Number(document.getElementById('history-edit-event-minute').value) || 0;
+    const playerId = historyEditEventPlayerSelect.value ? Number(historyEditEventPlayerSelect.value) : null;
+    const m = matchHistory.find(x => x.id === currentHistoryMatchId);
+    const player = playerId ? (m.players || []).find(p => p.id === playerId) : null;
+    if ((typeValue === 'yellow' || typeValue === 'red') && !playerId) { alert('Elige un jugador para la tarjeta.'); return; }
+    const event = typeValue === 'goal-rival'
+      ? { type: 'goal', team: 'rival', playerId: null, playerName: null, minute }
+      : typeValue === 'goal-own'
+      ? { type: 'goal', team: 'own', playerId, playerName: player ? player.name : null, minute }
+      : { type: typeValue, team: 'own', playerId, playerName: player ? player.name : null, minute };
+    historyEditEvents.push({ id: `ev-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, ...event });
+    historyEditEventPlayerSelect.value = '';
+    document.getElementById('history-edit-event-minute').value = '';
+    renderHistoryDetailEvents(m);
+  });
+
+  document.getElementById('btn-save-match-history').addEventListener('click', async () => {
+    if (!currentHistoryMatchId) return;
+    const rival = historyEditRivalInput.value.trim();
+    const match_date = historyEditDateInput.value;
+    if (!match_date) { alert('La fecha no puede quedar vacía.'); return; }
+    const { error } = await db.from('matches')
+      .update({ rival: rival || null, match_date, events: historyEditEvents })
+      .eq('id', currentHistoryMatchId);
+    if (error) { console.error(error); alert('No se pudieron guardar los cambios del partido.'); return; }
+    const m = matchHistory.find(x => x.id === currentHistoryMatchId);
+    m.rival = rival || null;
+    m.match_date = match_date;
+    m.events = historyEditEvents;
+    setHistoryEditMode(false);
+    renderMatchHistory();
+    openMatchHistoryDetail(currentHistoryMatchId);
+  });
+
   function closeMatchHistoryModal() {
     matchHistoryModalBackdrop.classList.add('hidden');
     matchHistoryModalBackdrop.classList.remove('flex');
     currentHistoryMatchId = null;
+    setHistoryEditMode(false);
   }
   document.getElementById('history-detail-close').addEventListener('click', closeMatchHistoryModal);
   matchHistoryModalBackdrop.addEventListener('click', (e) => { if (e.target === matchHistoryModalBackdrop) closeMatchHistoryModal(); });
@@ -1658,23 +1778,8 @@
       playersList.appendChild(row);
     });
 
-    const eventsList = document.getElementById('history-detail-events');
-    eventsList.innerHTML = '';
-    const events = m.events || [];
-    if (!events.length) {
-      eventsList.innerHTML = '<p class="text-xs text-muted">Sin goles ni tarjetas en este partido.</p>';
-    } else {
-      events.slice().sort((a, b) => a.minute - b.minute).forEach(ev => {
-        const icon = ev.type === 'goal' ? '⚽' : ev.type === 'yellow' ? '🟨' : '🟥';
-        const label = ev.type === 'goal'
-          ? (ev.team === 'own' ? `Gol${ev.playerName ? ' — ' + escapeHtml(ev.playerName) : ''}` : 'Gol rival')
-          : `${ev.type === 'yellow' ? 'Amarilla' : 'Roja'} — ${escapeHtml(ev.playerName || '')}`;
-        const row = document.createElement('div');
-        row.className = 'flex items-center gap-2 bg-night/60 border border-border rounded-lg px-3 py-1.5 text-sm';
-        row.innerHTML = `<span class="text-xs text-muted tabular-nums w-9 shrink-0">${ev.minute}'</span><span class="flex-1 truncate">${icon} ${label}</span>`;
-        eventsList.appendChild(row);
-      });
-    }
+    setHistoryEditMode(false);
+    renderHistoryDetailEvents(m);
 
     matchHistoryModalBackdrop.classList.remove('hidden');
     matchHistoryModalBackdrop.classList.add('flex');
@@ -1722,31 +1827,100 @@
     scoutingSaveTimer = setTimeout(saveRivalInfo, 1200);
   }
 
+  let scoutingReports = [];
+
   async function loadScoutingData() {
-    const [{ data: rival, error: rivalError }, { data: targets, error: targetsError }] = await Promise.all([
+    const [{ data: rival, error: rivalError }, { data: targets, error: targetsError }, { data: reports, error: reportsError }] = await Promise.all([
       db.from('scouting_rival').select('*').maybeSingle(),
       db.from('scouting_targets').select('*').order('created_at', { ascending: true }),
+      db.from('scouting_reports').select('*').order('created_at', { ascending: false }),
     ]);
     if (rivalError) console.error('No se pudo cargar la info del rival:', rivalError);
     if (targetsError) console.error('No se pudieron cargar los fichajes:', targetsError);
+    if (reportsError) console.error('No se pudieron cargar los informes anteriores:', reportsError);
     inputRivalName.value = rival?.name || '';
     inputRivalSystem.value = rival?.system || '';
     inputRivalNotes.value = rival?.notes || '';
     scoutingTargets = targets || [];
+    scoutingReports = reports || [];
     renderScoutingTargets();
+    renderScoutingReports();
   }
 
   [inputRivalName, inputRivalSystem, inputRivalNotes].forEach(el => {
     el.addEventListener('input', scheduleScoutingSave);
   });
 
+  const scoutingReportsListEl = document.getElementById('scouting-reports-list');
+  const scoutingReportsCountEl = document.getElementById('scouting-reports-count');
+
+  function renderScoutingReports() {
+    scoutingReportsListEl.innerHTML = '';
+    scoutingReportsCountEl.textContent = scoutingReports.length;
+    if (!scoutingReports.length) {
+      scoutingReportsListEl.innerHTML = '<p class="text-sm text-muted">Todavía no hay informes guardados. Pulsa "Guardar informe en histórico" para archivar las notas actuales.</p>';
+      return;
+    }
+    scoutingReports.forEach(r => {
+      const dateLabel = new Date(r.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+      const details = document.createElement('details');
+      details.className = 'bg-card border border-border rounded-xl px-4 py-3';
+      details.innerHTML = `
+        <summary class="flex items-center justify-between gap-3 cursor-pointer list-none">
+          <span class="min-w-0 truncate">
+            <span class="font-display font-600">${escapeHtml(r.opponent || 'Rival')}</span>
+            <span class="text-xs text-muted ml-2">${dateLabel}${r.system ? ` · ${escapeHtml(r.system)}` : ''}</span>
+          </span>
+          <button type="button" data-delete-report="${r.id}" class="btn-delete-report shrink-0 text-muted hover:text-red-400 transition-colors p-1" aria-label="Eliminar informe" title="Eliminar informe">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </summary>
+        <p class="text-sm text-muted mt-2 whitespace-pre-wrap">${escapeHtml(r.notes || '(sin notas)')}</p>
+      `;
+      scoutingReportsListEl.appendChild(details);
+    });
+  }
+
+  scoutingReportsListEl.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.btn-delete-report');
+    if (!btn) return;
+    e.preventDefault();
+    const id = Number(btn.dataset.deleteReport);
+    const { error } = await db.from('scouting_reports').delete().eq('id', id);
+    if (error) { console.error(error); return; }
+    scoutingReports = scoutingReports.filter(r => r.id !== id);
+    renderScoutingReports();
+  });
+
+  document.getElementById('btn-save-scouting-report').addEventListener('click', async () => {
+    const opponent = inputRivalName.value.trim();
+    const system = inputRivalSystem.value.trim();
+    const notes = inputRivalNotes.value.trim();
+    if (!opponent && !system && !notes) return;
+    const { data, error } = await db.from('scouting_reports')
+      .insert({ user_id: currentUser.id, opponent, system, notes })
+      .select()
+      .single();
+    if (error) { console.error(error); alert('No se pudo guardar el informe.'); return; }
+    scoutingReports.unshift(data);
+    renderScoutingReports();
+  });
+
   const scoutingGrid = document.getElementById('scouting-grid');
   const scoutingCountEl = document.getElementById('scouting-count');
+
+  const scoutingStatusOrder = ['Observación', 'Contactado', 'Descartado'];
+  const scoutingStatusStyles = {
+    'Observación': 'bg-gold/15 text-gold border border-gold/30',
+    'Contactado':  'bg-turf/15 text-turf border border-turf/30',
+    'Descartado':  'bg-red-500/15 text-red-400 border border-red-500/30',
+  };
 
   function renderScoutingTargets() {
     scoutingGrid.innerHTML = '';
     scoutingTargets.forEach(t => {
       const s = positionStyles[t.position];
+      const status = t.status || 'Observación';
       const card = document.createElement('div');
       card.className = 'bg-card border border-border hover:border-turf/40 rounded-xl p-4 transition-colors';
       card.innerHTML = `
@@ -1759,11 +1933,14 @@
               ${t.club ? `<span class="text-xs text-muted">· ${t.club}</span>` : ''}
             </div>
           </div>
-          <button data-delete-scout="${t.id}" class="btn-delete-scout shrink-0 text-muted hover:text-red-400 transition-colors p-1" title="Eliminar de seguimiento">
+          <button data-delete-scout="${t.id}" class="btn-delete-scout shrink-0 text-muted hover:text-red-400 transition-colors p-1" aria-label="Eliminar de seguimiento" title="Eliminar de seguimiento">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
           </button>
         </div>
-        ${t.note ? `<p class="text-sm text-muted">${t.note}</p>` : ''}
+        ${t.note ? `<p class="text-sm text-muted mb-3">${t.note}</p>` : ''}
+        <button data-cycle-status="${t.id}" class="btn-cycle-scout-status text-xs uppercase tracking-wide font-display font-600 px-2.5 py-1 rounded-full ${scoutingStatusStyles[status]}" title="Pulsa para cambiar el estado">
+          ${status}
+        </button>
       `;
       scoutingGrid.appendChild(card);
     });
@@ -1771,13 +1948,26 @@
   }
 
   scoutingGrid.addEventListener('click', async (e) => {
-    const btn = e.target.closest('.btn-delete-scout');
-    if (!btn) return;
-    const id = Number(btn.dataset.deleteScout);
-    const { error } = await db.from('scouting_targets').delete().eq('id', id);
-    if (error) { console.error(error); return; }
-    scoutingTargets = scoutingTargets.filter(t => t.id !== id);
-    renderScoutingTargets();
+    const deleteBtn = e.target.closest('.btn-delete-scout');
+    if (deleteBtn) {
+      const id = Number(deleteBtn.dataset.deleteScout);
+      const { error } = await db.from('scouting_targets').delete().eq('id', id);
+      if (error) { console.error(error); return; }
+      scoutingTargets = scoutingTargets.filter(t => t.id !== id);
+      renderScoutingTargets();
+      return;
+    }
+    const statusBtn = e.target.closest('.btn-cycle-scout-status');
+    if (statusBtn) {
+      const id = Number(statusBtn.dataset.cycleStatus);
+      const target = scoutingTargets.find(t => t.id === id);
+      if (!target) return;
+      const nextStatus = scoutingStatusOrder[(scoutingStatusOrder.indexOf(target.status || 'Observación') + 1) % scoutingStatusOrder.length];
+      const { error } = await db.from('scouting_targets').update({ status: nextStatus }).eq('id', id);
+      if (error) { console.error(error); return; }
+      target.status = nextStatus;
+      renderScoutingTargets();
+    }
   });
 
   const scoutModalBackdrop = document.getElementById('scout-modal-backdrop');
@@ -1803,10 +1993,11 @@
     const name = document.getElementById('input-scout-name').value.trim();
     const position = document.getElementById('input-scout-position').value;
     const club = document.getElementById('input-scout-club').value.trim();
+    const status = document.getElementById('input-scout-status').value;
     const note = document.getElementById('input-scout-note').value.trim();
     if (!name) return;
     const { data, error } = await db.from('scouting_targets')
-      .insert({ user_id: currentUser.id, name, position, club, note })
+      .insert({ user_id: currentUser.id, name, position, club, status, note })
       .select()
       .single();
     if (error) { console.error(error); alert('No se pudo guardar el fichaje.'); return; }
@@ -2020,7 +2211,7 @@
       `Esto borrará TODA la plantilla, pizarra, entrenamientos y scouting de "${username}". La cuenta de acceso no se borra (eso se hace desde Supabase). ¿Continuar?`
     );
     if (!confirmed) return;
-    const tables = ['players', 'pizarra', 'exercises', 'scouting_rival', 'scouting_targets', 'match_state', 'matches', 'training_sessions', 'training_attendance', 'session_items'];
+    const tables = ['players', 'pizarra', 'exercises', 'scouting_rival', 'scouting_targets', 'scouting_reports', 'match_state', 'matches', 'training_sessions', 'training_attendance', 'session_items'];
     for (const table of tables) {
       const { error } = await db.from(table).delete().eq('user_id', userId);
       if (error) console.error(`No se pudo borrar ${table} para ${username}:`, error);
@@ -2059,7 +2250,7 @@
         exercises: exercises.map(({ name, category, duration, desc }) => ({ name, category, duration, desc })),
         scouting: {
           rival: { name: inputRivalName.value, system: inputRivalSystem.value, notes: inputRivalNotes.value },
-          targets: scoutingTargets.map(({ name, position, club, note }) => ({ name, position, club, note })),
+          targets: scoutingTargets.map(({ name, position, club, status, note }) => ({ name, position, club, status, note })),
         },
       },
     };
@@ -2146,7 +2337,7 @@
             await db.from('scouting_targets').delete().eq('user_id', currentUser.id);
             if (incoming.scouting.targets.length) {
               await db.from('scouting_targets').insert(incoming.scouting.targets.map(t => ({
-                user_id: currentUser.id, name: t.name, position: t.position, club: t.club, note: t.note,
+                user_id: currentUser.id, name: t.name, position: t.position, club: t.club, status: t.status || 'Observación', note: t.note,
               })));
             }
           }

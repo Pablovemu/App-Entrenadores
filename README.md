@@ -26,7 +26,10 @@ oficina-entrenador-app/
 ├── supabase_migration_02_admin_and_match.sql # Partido en Vivo persistente + panel de admin (ejecutar después)
 ├── supabase_migration_03_stats_calendar_match.sql # Formato F7/F11, calendario real, asistencia e histórico de partidos
 ├── supabase_migration_04_match_duration.sql   # Duración del partido, para el % de minutos disputados
-├── supabase_migration_05_session_items.sql    # Plan de sesión por bloques y ejercicios (ejecutar el último)
+├── supabase_migration_05_session_items.sql    # Plan de sesión por bloques y ejercicios
+├── supabase_migration_06_scouting_history_status.sql # Histórico de informes de rival + estado en fichajes (ejecutar el último)
+├── scripts/
+│   └── smoke-test.js      # Comprobación automática con Playwright (ver "Antes de desplegar")
 └── .gitignore
 ```
 
@@ -56,14 +59,24 @@ npm run css:build  # regenera css/styles.css a partir de css/input.css
 
 Hay también `npm run css:watch` para que se regenere automáticamente mientras editas.
 
+## Antes de desplegar (comprobación automática)
+
+Hay un script de humo con Playwright que abre la app en un Chromium sin cabeza y falla si aparece algún error en la consola del navegador (JS que no carga, errores de sintaxis, etc.). No sustituye probar la app a mano, pero pilla roturas evidentes antes de hacer `git push`:
+
+```bash
+npm install                      # solo la primera vez
+npx playwright install chromium  # solo la primera vez, descarga el navegador
+npm run test:smoke
+```
+
 ## Estado actual — los 6 módulos
 
 1. **Base y Navegación** ✅ — Menú lateral oscuro/verde césped con indicador de sección activa. Incluye un selector de **formato de equipo** (Fútbol 7 / Fútbol 11) que afecta a la Pizarra y al Partido en Vivo (ver más abajo).
 2. **Gestión de Plantilla** ✅ — Alta/baja de jugadores (nombre, dorsal, posición), con persistencia. Al pulsar sobre un jugador se abre su **ficha de estadísticas de temporada**: goles, minutos jugados (+ % sobre el total de minutos disputados por el equipo), tarjetas, y asistencia a entrenamientos **desglosada semana a semana** (para poder comprobar exactamente qué día faltó, no solo un total).
 3. **Pizarra Táctica** ✅ — Campo con fichas + balón, arrastrables (funciona con ratón y con dedo/tablet), dibujo de líneas/flechas en 3 colores, botón reiniciar. La formación es de 11 vs 11 o 7 vs 7 según el formato de equipo elegido. Con persistencia.
 4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros y alta/baja. **Calendario semanal real**, navegable semana a semana: se pueden crear sesiones en un día concreto (o arrastrar una tarjeta de ejercicio hasta el día), y cada sesión permite pasar lista de **asistencia a entrenamientos** jugador por jugador. Cada sesión es ahora un **plan por bloques** (Calentamiento / Principal / Vuelta a la calma) con varios ejercicios ordenados —de la biblioteca o personalizados— y su duración; el plan se puede editar después de creado.
-5. **Gestión de Minutos y Partido** ✅ — Datos del partido (rival y fecha), **marcador de goles** (con autor cuando es de nuestro equipo), **tarjetas amarillas/rojas** (con el jugador al que se le muestran), cronómetro con partes (2 en Fútbol 11, 4 en Fútbol 7), alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. El partido en curso persiste (tabla `match_state`) y sobrevive a un refresco de página (siempre queda en pausa al recargar, hay que pulsar "Reanudar"). Al pulsar **"Finalizar partido"** se guarda en el histórico (tabla `matches`), que es de donde salen las estadísticas de la ficha de cada jugador. Hay una nueva pantalla **"Historial de Partidos"** con la lista de partidos guardados (rival, fecha, resultado) y, al abrir uno, quién jugó de titular/suplente, minutos, goles y tarjetas de cada jugador.
-6. **Scouting y Rival** ✅ — Notas del rival con autoguardado, lista de seguimiento de fichajes con alta/baja.
+5. **Gestión de Minutos y Partido** ✅ — Datos del partido (rival y fecha), **marcador de goles** (con autor cuando es de nuestro equipo), **tarjetas amarillas/rojas** (con el jugador al que se le muestran), cronómetro con partes (2 en Fútbol 11, 4 en Fútbol 7), alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. El partido en curso persiste (tabla `match_state`) y sobrevive a un refresco de página (siempre queda en pausa al recargar, hay que pulsar "Reanudar"). Al pulsar **"Finalizar partido"** se guarda en el histórico (tabla `matches`), que es de donde salen las estadísticas de la ficha de cada jugador. Hay una pantalla **"Historial de Partidos"** con la lista de partidos guardados (rival, fecha, resultado) y, al abrir uno, quién jugó de titular/suplente, minutos, goles y tarjetas de cada jugador. Desde ahí se puede **editar un partido ya finalizado** (botón "Editar partido"): corregir rival, fecha, y añadir/quitar goles y tarjetas — los minutos por jugador no son editables todavía (habría que borrar y crear el partido de cero para eso).
+6. **Scouting y Rival** ✅ — Notas del rival con autoguardado, más un botón **"Guardar informe en histórico"** que archiva las notas actuales (rival, sistema, notas) como un informe fechado; debajo se lista el histórico de informes anteriores, cada uno desplegable y con opción de borrar. Lista de seguimiento de fichajes con alta/baja, y cada fichaje tiene un **estado** (Observación / Contactado / Descartado) que se cicla con un clic.
 
 ### Cuentas de usuario y backend (Supabase)
 
@@ -115,7 +128,9 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
 - [x] Persistencia añadida (tabla `match_state`, ver arriba).
 - [x] El botón de parte ahora cicla 1ª/2ª (Fútbol 11) o 1ª-4ª (Fútbol 7) según el formato de equipo, aunque sigue siendo una etiqueta manual (no corta el cronómetro solo).
 - [x] Marcador de goles (con autor) y tarjetas (con jugador), más histórico de partidos pasados (tabla `matches`, botón "Finalizar partido").
-- [x] Pantalla "Historial de Partidos": lista de partidos guardados y detalle (titulares/suplentes, minutos, goles, tarjetas). Se puede eliminar un partido del historial si hay que corregirlo, pero no editar sus datos (habría que borrarlo y crear uno de cero, o corregirlo directamente en Supabase).
+- [x] Pantalla "Historial de Partidos": lista de partidos guardados y detalle (titulares/suplentes, minutos, goles, tarjetas).
+- [x] Editar un partido ya finalizado (botón "Editar partido" en el detalle): rival, fecha, y goles/tarjetas. Se puede seguir eliminando el partido entero si hace falta.
+- [ ] Los minutos por jugador y la alineación (titular/suplente) de un partido finalizado no son editables — solo goles, tarjetas, rival y fecha. Para corregir minutos hay que borrar el partido y crear uno de cero, o corregirlo directamente en Supabase.
 
 **Formato de equipo**
 - [x] Selector Fútbol 7 / Fútbol 11 en la barra lateral: decide las partes del partido (2 o 4) y la formación de la Pizarra (7 vs 7 u 11 vs 11).
@@ -126,14 +141,14 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
 - [x] Ficha de jugador con estadísticas de temporada (goles, minutos, tarjetas, asistencia a entrenamientos) al pulsar sobre su tarjeta.
 
 **Scouting**
-- [ ] Las notas del rival no tienen histórico por jornada (se sobrescribe siempre el mismo bloque).
-- [ ] La lista de seguimiento no tiene estado (observación/contactado/descartado).
+- [x] Histórico de informes de rival por jornada: botón "Guardar informe en histórico" que archiva las notas actuales (rival, sistema, notas) con fecha; lista debajo con los informes anteriores, desplegables y borrables.
+- [x] Estado en la lista de seguimiento (Observación / Contactado / Descartado), ciclable con un clic en la propia tarjeta.
 
 **Otros**
 - [x] Bug de contraste corregido: el color personalizado `base` de `tailwind.config.js` colisionaba con la utilidad de tamaño de fuente `text-base` de Tailwind (misma clase `.text-base`, la regla de color ganaba el cascade), y por eso nombres de jugador, fichajes de scouting y usuarios del panel admin se veían en negro sobre fondo oscuro. Se renombró ese color a `night`.
-- [ ] Accesibilidad: revisar foco de teclado y atributos ARIA.
-- [ ] Revisar el truncado de nombres largos en las tarjetas de jugador (algunos nombres se cortan más de lo necesario).
-- [ ] Tests básicos / comprobación automática antes de cada despliegue (aunque sea un script simple que abra la app con Playwright y compruebe que no hay errores en consola).
+- [x] Accesibilidad: la tecla Escape cierra cualquier modal abierto, los 7 modales de la app tienen `role="dialog"` + `aria-modal` + `aria-labelledby`, y los botones que solo tienen un icono (cerrar, editar, eliminar, sustituir, cambiar día de asistencia…) tienen `aria-label` además del `title`. Queda pendiente un repaso más a fondo (foco atrapado dentro del modal, orden de tabulación, alternativa por teclado al arrastrar sesiones/ejercicios).
+- [x] Truncado de nombres largos en las tarjetas de jugador: ahora el nombre puede ocupar dos líneas (`line-clamp-2`) en vez de cortarse en una sola, y tiene un tooltip con el nombre completo.
+- [x] Comprobación automática antes de desplegar: `npm run test:smoke` (Playwright) abre la app y falla si hay errores de consola — ver sección "Antes de desplegar" más arriba. No está enganchado a ningún pipeline de CI todavía, hay que ejecutarlo a mano.
 
 ## Cómo continuar en Claude Code
 
