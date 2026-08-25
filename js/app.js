@@ -815,7 +815,7 @@
       col.className = `bg-card border ${isToday ? 'border-turf/60' : 'border-border'} rounded-xl p-2 sm:p-3 min-h-[130px] flex flex-col transition-colors`;
       const sessionsHtml = daySessions.length
         ? daySessions.map(s => `
-            <div data-session-id="${s.id}" class="btn-open-session cursor-pointer rounded-lg px-2 py-1.5 mb-1.5 text-[11px] sm:text-xs font-display font-600 ${calendarSessionStyles[s.category] || calendarSessionStyles['Táctico']}">
+            <div data-session-id="${s.id}" draggable="true" class="btn-open-session cursor-grab active:cursor-grabbing rounded-lg px-2 py-1.5 mb-1.5 text-[11px] sm:text-xs font-display font-600 ${calendarSessionStyles[s.category] || calendarSessionStyles['Táctico']}">
               ${escapeHtml(s.label)}${s.time ? `<br><span class="opacity-70">${s.time}</span>` : ''}
             </div>`).join('')
         : '';
@@ -833,6 +833,13 @@
       col.addEventListener('drop', async (e) => {
         e.preventDefault();
         col.classList.remove('border-turf');
+
+        const sessionId = Number(e.dataTransfer.getData('text/session-id'));
+        if (sessionId) {
+          await moveSessionToDay(sessionId, iso);
+          return;
+        }
+
         const exerciseId = Number(e.dataTransfer.getData('text/exercise-id'));
         const exercise = exercises.find(ex => ex.id === exerciseId);
         if (!exercise) return;
@@ -867,12 +874,28 @@
     e.dataTransfer.setData('text/exercise-id', card.dataset.exerciseId);
   });
 
+  calendarGrid.addEventListener('dragstart', (e) => {
+    const sessionEl = e.target.closest('.btn-open-session');
+    if (!sessionEl) return;
+    e.dataTransfer.setData('text/session-id', sessionEl.dataset.sessionId);
+  });
+
   calendarGrid.addEventListener('click', (e) => {
     const addBtn = e.target.closest('.btn-add-session');
     if (addBtn) { openSessionModal(addBtn.dataset.addDay); return; }
     const sessionEl = e.target.closest('.btn-open-session');
     if (sessionEl) { openSessionDetail(Number(sessionEl.dataset.sessionId)); return; }
   });
+
+  async function moveSessionToDay(sessionId, newIso) {
+    const session = weekSessions.find(s => s.id === sessionId);
+    if (session && session.session_date === newIso) return;
+    const { error } = await db.from('training_sessions').update({ session_date: newIso }).eq('id', sessionId);
+    if (error) { console.error('No se pudo mover la sesión:', error); alert('No se pudo mover la sesión.'); return; }
+    if (session) session.session_date = newIso;
+    else await loadWeekSessions();
+    renderCalendar();
+  }
 
   document.getElementById('btn-week-prev').addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, -7); loadWeekSessions(); });
   document.getElementById('btn-week-next').addEventListener('click', () => { currentWeekStart = addDays(currentWeekStart, 7); loadWeekSessions(); });
