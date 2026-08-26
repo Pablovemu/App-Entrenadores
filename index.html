@@ -812,25 +812,38 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Posición</label>
-            <select id="input-scout-position" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
-              <option value="POR">Portero</option>
-              <option value="DEF">Defensa</option>
-              <option value="MED">Centrocampista</option>
-              <option value="DEL">Delantero</option>
-            </select>
+            <input id="input-scout-position" type="text" list="scout-position-options" placeholder="Ej. EI, MC, LD…" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+            <datalist id="scout-position-options">
+              <option value="POR">
+              <option value="LD">
+              <option value="LI">
+              <option value="DFC">
+              <option value="MCD">
+              <option value="MC">
+              <option value="MCO">
+              <option value="ED">
+              <option value="EI">
+              <option value="DC">
+            </datalist>
           </div>
           <div>
             <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Club actual</label>
             <input id="input-scout-club" type="text" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
           </div>
         </div>
-        <div>
-          <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Estado</label>
-          <select id="input-scout-status" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
-            <option value="Observación">Observación</option>
-            <option value="Contactado">Contactado</option>
-            <option value="Descartado">Descartado</option>
-          </select>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Contacto</label>
+            <input id="input-scout-contact" type="text" placeholder="Teléfono, email…" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+          </div>
+          <div>
+            <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Estado</label>
+            <select id="input-scout-status" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              <option value="Observación">Observación</option>
+              <option value="Contactado">Contactado</option>
+              <option value="Descartado">Descartado</option>
+            </select>
+          </div>
         </div>
         <div>
           <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Nota</label>
@@ -838,7 +851,7 @@
         </div>
         <div class="flex gap-3 pt-2">
           <button type="button" id="scout-modal-cancel" class="flex-1 border border-border rounded-lg py-2.5 font-display font-600 uppercase text-sm tracking-wide text-muted hover:text-ink hover:bg-card transition-colors">Cancelar</button>
-          <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
+          <button type="submit" id="scout-modal-submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
         </div>
       </form>
     </div>

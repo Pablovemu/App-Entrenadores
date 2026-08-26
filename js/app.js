@@ -1916,28 +1916,38 @@
     'Descartado':  'bg-red-500/15 text-red-400 border border-red-500/30',
   };
 
+  function scoutingPositionStyle(position) {
+    return positionStyles[position] || { label: position || 'Sin posición', text: 'text-muted', dot: 'bg-muted/60' };
+  }
+
   function renderScoutingTargets() {
     scoutingGrid.innerHTML = '';
     scoutingTargets.forEach(t => {
-      const s = positionStyles[t.position];
+      const s = scoutingPositionStyle(t.position);
       const status = t.status || 'Observación';
       const card = document.createElement('div');
       card.className = 'bg-card border border-border hover:border-turf/40 rounded-xl p-4 transition-colors';
       card.innerHTML = `
         <div class="flex items-start justify-between gap-2 mb-2">
           <div class="min-w-0">
-            <p class="font-display font-600 text-base truncate">${t.name}</p>
+            <p class="font-display font-600 text-base truncate">${escapeHtml(t.name)}</p>
             <div class="flex items-center gap-2 mt-1">
               <span class="w-1.5 h-1.5 rounded-full ${s.dot}"></span>
-              <span class="text-xs uppercase tracking-wide ${s.text}">${s.label}</span>
-              ${t.club ? `<span class="text-xs text-muted">· ${t.club}</span>` : ''}
+              <span class="text-xs uppercase tracking-wide ${s.text}">${escapeHtml(s.label)}</span>
+              ${t.club ? `<span class="text-xs text-muted">· ${escapeHtml(t.club)}</span>` : ''}
             </div>
+            ${t.contact ? `<p class="text-xs text-muted mt-1">${escapeHtml(t.contact)}</p>` : ''}
           </div>
-          <button data-delete-scout="${t.id}" class="btn-delete-scout shrink-0 text-muted hover:text-red-400 transition-colors p-1" aria-label="Eliminar de seguimiento" title="Eliminar de seguimiento">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
-          </button>
+          <div class="flex items-center gap-1 shrink-0">
+            <button data-edit-scout="${t.id}" class="btn-edit-scout text-muted hover:text-turf transition-colors p-1" aria-label="Editar fichaje" title="Editar fichaje">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            </button>
+            <button data-delete-scout="${t.id}" class="btn-delete-scout text-muted hover:text-red-400 transition-colors p-1" aria-label="Eliminar de seguimiento" title="Eliminar de seguimiento">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/><path d="M10 11v6M14 11v6"/></svg>
+            </button>
+          </div>
         </div>
-        ${t.note ? `<p class="text-sm text-muted mb-3">${t.note}</p>` : ''}
+        ${t.note ? `<p class="text-sm text-muted mb-3">${escapeHtml(t.note)}</p>` : ''}
         <button data-cycle-status="${t.id}" class="btn-cycle-scout-status text-xs uppercase tracking-wide font-display font-600 px-2.5 py-1 rounded-full ${scoutingStatusStyles[status]}" title="Pulsa para cambiar el estado">
           ${status}
         </button>
@@ -1957,6 +1967,12 @@
       renderScoutingTargets();
       return;
     }
+    const editBtn = e.target.closest('.btn-edit-scout');
+    if (editBtn) {
+      const target = scoutingTargets.find(t => t.id === Number(editBtn.dataset.editScout));
+      if (target) openScoutModal(target);
+      return;
+    }
     const statusBtn = e.target.closest('.btn-cycle-scout-status');
     if (statusBtn) {
       const id = Number(statusBtn.dataset.cycleStatus);
@@ -1972,8 +1988,26 @@
 
   const scoutModalBackdrop = document.getElementById('scout-modal-backdrop');
   const scoutForm = document.getElementById('form-add-scout');
+  const scoutModalTitle = document.getElementById('scout-modal-title');
+  const scoutModalSubmit = document.getElementById('scout-modal-submit');
+  let editingScoutId = null;
 
-  function openScoutModal() {
+  function openScoutModal(target) {
+    editingScoutId = target ? target.id : null;
+    if (target) {
+      scoutModalTitle.textContent = 'Editar fichaje';
+      scoutModalSubmit.textContent = 'Guardar cambios';
+      document.getElementById('input-scout-name').value = target.name || '';
+      document.getElementById('input-scout-position').value = target.position || '';
+      document.getElementById('input-scout-club').value = target.club || '';
+      document.getElementById('input-scout-contact').value = target.contact || '';
+      document.getElementById('input-scout-status').value = target.status || 'Observación';
+      document.getElementById('input-scout-note').value = target.note || '';
+    } else {
+      scoutModalTitle.textContent = 'Nuevo fichaje';
+      scoutModalSubmit.textContent = 'Guardar';
+      scoutForm.reset();
+    }
     scoutModalBackdrop.classList.remove('hidden');
     scoutModalBackdrop.classList.add('flex');
   }
@@ -1981,9 +2015,10 @@
     scoutModalBackdrop.classList.add('hidden');
     scoutModalBackdrop.classList.remove('flex');
     scoutForm.reset();
+    editingScoutId = null;
   }
 
-  document.getElementById('btn-add-scout').addEventListener('click', openScoutModal);
+  document.getElementById('btn-add-scout').addEventListener('click', () => openScoutModal());
   document.getElementById('scout-modal-close').addEventListener('click', closeScoutModal);
   document.getElementById('scout-modal-cancel').addEventListener('click', closeScoutModal);
   scoutModalBackdrop.addEventListener('click', (e) => { if (e.target === scoutModalBackdrop) closeScoutModal(); });
@@ -1991,17 +2026,27 @@
   scoutForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('input-scout-name').value.trim();
-    const position = document.getElementById('input-scout-position').value;
+    const position = document.getElementById('input-scout-position').value.trim();
     const club = document.getElementById('input-scout-club').value.trim();
+    const contact = document.getElementById('input-scout-contact').value.trim();
     const status = document.getElementById('input-scout-status').value;
     const note = document.getElementById('input-scout-note').value.trim();
     if (!name) return;
-    const { data, error } = await db.from('scouting_targets')
-      .insert({ user_id: currentUser.id, name, position, club, status, note })
-      .select()
-      .single();
-    if (error) { console.error(error); alert('No se pudo guardar el fichaje.'); return; }
-    scoutingTargets.push(data);
+    if (editingScoutId !== null) {
+      const { error } = await db.from('scouting_targets')
+        .update({ name, position, club, contact, status, note })
+        .eq('id', editingScoutId);
+      if (error) { console.error(error); alert('No se pudo guardar el fichaje.'); return; }
+      const target = scoutingTargets.find(t => t.id === editingScoutId);
+      if (target) Object.assign(target, { name, position, club, contact, status, note });
+    } else {
+      const { data, error } = await db.from('scouting_targets')
+        .insert({ user_id: currentUser.id, name, position, club, contact, status, note })
+        .select()
+        .single();
+      if (error) { console.error(error); alert('No se pudo guardar el fichaje.'); return; }
+      scoutingTargets.push(data);
+    }
     renderScoutingTargets();
     closeScoutModal();
   });
@@ -2261,7 +2306,7 @@
         exercises: exercises.map(({ name, category, duration, desc }) => ({ name, category, duration, desc })),
         scouting: {
           rival: { name: inputRivalName.value, system: inputRivalSystem.value, notes: inputRivalNotes.value },
-          targets: scoutingTargets.map(({ name, position, club, status, note }) => ({ name, position, club, status, note })),
+          targets: scoutingTargets.map(({ name, position, club, contact, status, note }) => ({ name, position, club, contact, status, note })),
         },
       },
     };
@@ -2348,7 +2393,7 @@
             await db.from('scouting_targets').delete().eq('user_id', currentUser.id);
             if (incoming.scouting.targets.length) {
               await db.from('scouting_targets').insert(incoming.scouting.targets.map(t => ({
-                user_id: currentUser.id, name: t.name, position: t.position, club: t.club, status: t.status || 'Observación', note: t.note,
+                user_id: currentUser.id, name: t.name, position: t.position, club: t.club, contact: t.contact || null, status: t.status || 'Observación', note: t.note,
               })));
             }
           }
