@@ -28,7 +28,8 @@ oficina-entrenador-app/
 ├── supabase_migration_04_match_duration.sql   # Duración del partido, para el % de minutos disputados
 ├── supabase_migration_05_session_items.sql    # Plan de sesión por bloques y ejercicios
 ├── supabase_migration_06_scouting_history_status.sql # Histórico de informes de rival + estado en fichajes
-├── supabase_migration_07_scouting_contact.sql # Número de contacto en fichajes (ejecutar el último)
+├── supabase_migration_07_scouting_contact.sql # Número de contacto en fichajes
+├── supabase_migration_08_exercise_extras.sql  # Ejercicios: nº jugadores, material, favorito, variante; objetivo de sesión (ejecutar el último)
 ├── scripts/
 │   └── smoke-test.js      # Comprobación automática con Playwright (ver "Antes de desplegar")
 └── .gitignore
@@ -75,7 +76,7 @@ npm run test:smoke
 1. **Base y Navegación** ✅ — Menú lateral oscuro/verde césped con indicador de sección activa. Incluye un selector de **formato de equipo** (Fútbol 7 / Fútbol 11) que afecta a la Pizarra y al Partido en Vivo (ver más abajo).
 2. **Gestión de Plantilla** ✅ — Alta/baja de jugadores (nombre, dorsal, posición), con persistencia. Al pulsar sobre un jugador se abre su **ficha de estadísticas de temporada**: goles, minutos jugados (+ % sobre el total de minutos disputados por el equipo), tarjetas, y asistencia a entrenamientos **desglosada semana a semana** (para poder comprobar exactamente qué día faltó, no solo un total).
 3. **Pizarra Táctica** ✅ — Campo con fichas + balón, arrastrables (funciona con ratón y con dedo/tablet), dibujo de líneas/flechas en 3 colores, botón reiniciar. La formación es de 11 vs 11 o 7 vs 7 según el formato de equipo elegido. Con persistencia.
-4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros y alta/baja. **Calendario semanal real**, navegable semana a semana: se pueden crear sesiones en un día concreto (o arrastrar una tarjeta de ejercicio hasta el día), y cada sesión permite pasar lista de **asistencia a entrenamientos** jugador por jugador. Cada sesión es ahora un **plan por bloques** (Calentamiento / Principal / Vuelta a la calma) con varios ejercicios ordenados —de la biblioteca o personalizados— y su duración; el plan se puede editar después de creado.
+4. **Generador de Entrenamientos** ✅ — Fichas de ejercicios por categoría (Físico/Táctico/Técnico) con filtros, alta, baja **y edición**. Cada ejercicio puede tener **nº de jugadores necesarios, material** (conos, petos, balones…), marcarse como **favorito** (aparece primero en la lista) y enlazarse como **variante de otro ejercicio** (se muestra "Variante de: X" en su tarjeta). **Calendario**, con vista **semanal** (crear sesiones a mano o arrastrando un ejercicio, mover sesiones ya creadas entre días, asistencia por sesión) y vista **mensual** (de un vistazo, con un punto de color por sesión; pulsar un día salta a esa semana). Cada sesión es un **plan por bloques** (Calentamiento / Principal / Vuelta a la calma) con varios ejercicios ordenados y su duración, tiene un **objetivo** opcional (Carga, Descarga, Previa a partido…), y se puede **duplicar a otro día** con un clic sin tener que recrearla.
 5. **Gestión de Minutos y Partido** ✅ — Datos del partido (rival y fecha), **marcador de goles** (con autor cuando es de nuestro equipo), **tarjetas amarillas/rojas** (con el jugador al que se le muestran), cronómetro con partes (2 en Fútbol 11, 4 en Fútbol 7), alineación automática desde la plantilla real, minutos por jugador en tiempo real, cambios rápidos entre campo y banquillo. El partido en curso persiste (tabla `match_state`) y sobrevive a un refresco de página (siempre queda en pausa al recargar, hay que pulsar "Reanudar"). Al pulsar **"Finalizar partido"** se guarda en el histórico (tabla `matches`), que es de donde salen las estadísticas de la ficha de cada jugador. Hay una pantalla **"Historial de Partidos"** con la lista de partidos guardados (rival, fecha, resultado) y, al abrir uno, quién jugó de titular/suplente, minutos, goles y tarjetas de cada jugador. Desde ahí se puede **editar un partido ya finalizado** (botón "Editar partido"): corregir rival, fecha, y añadir/quitar goles y tarjetas — los minutos por jugador no son editables todavía (habría que borrar y crear el partido de cero para eso).
 6. **Scouting y Rival** ✅ — Notas del rival con autoguardado, más un botón **"Guardar informe en histórico"** que archiva las notas actuales (rival, sistema, notas) como un informe fechado; debajo se lista el histórico de informes anteriores, cada uno desplegable y con opción de borrar. Lista de seguimiento de fichajes con alta, baja **y edición** (lápiz en cada tarjeta), estado (Observación / Contactado / Descartado) que se cicla con un clic, número de contacto, y posición en **texto libre** (con sugerencias como LD, MC, EI… pero se puede escribir cualquier cosa).
 
@@ -122,9 +123,17 @@ Las claves (`SUPABASE_URL` y la clave `anon`/`publishable`) están embebidas en 
 - [x] Botón para mostrar/ocultar la contraseña al escribirla, en login y registro.
 - [ ] Borrar la cuenta de acceso (login) también desde el panel de admin de la app, sin pasar por Supabase — requeriría una Netlify Function que guarde la clave `service_role` de forma segura en el servidor (no en el navegador). Se decidió no hacerlo todavía: con pocos usuarios, borrar a mano en Supabase es más rápido que montar esa infraestructura. Reconsiderar si el borrado de cuentas se vuelve frecuente.
 
-**Calendario semanal (Módulo 4)**
+**Entrenamientos (Módulo 4)**
 - [x] Calendario con fechas reales, navegable semana a semana, con creación de sesiones (a mano o arrastrando un ejercicio) y asistencia a entrenamientos por sesión.
 - [x] Mover/arrastrar sesiones ya creadas de un día a otro con drag-and-drop (ya no hay que borrarla y crearla de nuevo).
+- [x] Ficha de ejercicio más completa: nº de jugadores, material, favoritos (se ordenan primero), variante de otro ejercicio. Editar un ejercicio ya creado.
+- [x] Duplicar una sesión a otro día (con todo su plan de bloques) sin recrearla desde cero.
+- [x] Vista mensual del calendario, además de la semanal, para ver de un vistazo un bloque de varias semanas.
+- [x] Objetivo de la sesión (Carga, Descarga, Previa a partido…), visible en el detalle de la sesión.
+- [ ] Diagrama visual por ejercicio (tipo mini-pizarra con dibujo) — se dejó fuera de esta tanda por ser mucho más grande que el resto; se puede abordar aparte si interesa.
+- [ ] Ficha de sesión para llevar al campo (vista a pantalla completa / imprimible).
+- [ ] Carga de entrenamiento por jugador (minutos/asistencia acumulados por semana).
+- [ ] Nota rápida post-entreno ligada a la sesión.
 
 **Partido (Módulo 5)**
 - [x] Persistencia añadida (tabla `match_state`, ver arriba).

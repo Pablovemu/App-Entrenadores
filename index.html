@@ -348,14 +348,20 @@
         <!-- ---------- Calendario semanal ---------- -->
         <div>
           <div class="flex items-center justify-between mb-2 gap-3 flex-wrap">
-            <p class="text-xs uppercase tracking-widest text-turf font-display font-600">Calendario semanal</p>
+            <div class="flex items-center gap-3">
+              <p class="text-xs uppercase tracking-widest text-turf font-display font-600">Calendario</p>
+              <div class="flex items-center rounded-lg border border-border overflow-hidden">
+                <button id="btn-calendar-view-week" type="button" class="calendar-view-btn px-3 py-1 text-xs font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Semana</button>
+                <button id="btn-calendar-view-month" type="button" class="calendar-view-btn px-3 py-1 text-xs font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Mes</button>
+              </div>
+            </div>
             <div class="flex items-center gap-2">
-              <button id="btn-week-prev" type="button" aria-label="Semana anterior" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana anterior">
+              <button id="btn-week-prev" type="button" aria-label="Anterior" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Anterior">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
               </button>
               <button id="btn-week-today" type="button" class="px-3 py-1.5 rounded-lg border border-border hover:border-turf/50 text-xs font-display font-600 uppercase tracking-wide text-muted hover:text-ink transition-colors">Hoy</button>
               <span id="calendar-week-label" class="text-sm text-muted min-w-[130px] text-center"></span>
-              <button id="btn-week-next" type="button" aria-label="Semana siguiente" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Semana siguiente">
+              <button id="btn-week-next" type="button" aria-label="Siguiente" class="p-1.5 rounded-lg border border-border hover:border-turf/50 text-muted hover:text-ink transition-colors" title="Siguiente">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
               </button>
             </div>
@@ -363,6 +369,9 @@
           <p class="text-xs text-muted mb-3">Arrastra un ejercicio hasta un día para programarlo, o pulsa el "+" de un día para añadir una sesión. Pulsa una sesión para pasar lista de asistencia.</p>
           <div id="calendar-grid" class="grid grid-cols-7 gap-2 sm:gap-3">
             <!-- Los días y sesiones se generan por JavaScript -->
+          </div>
+          <div id="calendar-month-grid" class="hidden grid grid-cols-7 gap-1.5 sm:gap-2">
+            <!-- Vista mensual, se genera por JavaScript -->
           </div>
         </div>
       </section>
@@ -397,6 +406,17 @@
                 <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Hora</label>
                 <input id="input-session-time" type="time" value="18:00" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
               </div>
+            </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Objetivo de la sesión</label>
+              <input id="input-session-objective" type="text" list="session-objective-options" placeholder="Ej. Carga, Descarga, Previa a partido…" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              <datalist id="session-objective-options">
+                <option value="Carga">
+                <option value="Descarga">
+                <option value="Previa a partido">
+                <option value="Recuperación post-partido">
+                <option value="Pretemporada">
+              </datalist>
             </div>
 
             <div class="border-t border-border pt-4">
@@ -438,6 +458,15 @@
 
           <p class="text-xs uppercase tracking-wide text-muted mb-2">Asistencia</p>
           <div id="session-detail-attendance" class="space-y-1.5 max-h-64 overflow-y-auto mb-4"></div>
+
+          <div class="border-t border-border pt-4 mb-4">
+            <p class="text-xs uppercase tracking-wide text-muted mb-2">Duplicar esta sesión a otro día</p>
+            <div class="flex gap-2">
+              <input id="input-duplicate-session-date" type="date" class="flex-1 bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              <button id="btn-duplicate-session" type="button" class="shrink-0 border border-turf/40 text-turf hover:bg-turf/10 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">Duplicar</button>
+            </div>
+          </div>
+
           <button id="btn-delete-session" type="button" class="w-full border border-red-500/30 hover:bg-red-500/15 text-red-400 font-display font-600 uppercase text-xs tracking-wide px-3 py-2 rounded-lg transition-colors">
             Eliminar sesión
           </button>
@@ -472,13 +501,33 @@
                 <input id="input-exercise-duration" type="text" placeholder="15 min" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
               </div>
             </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Nº de jugadores</label>
+                <input id="input-exercise-players" type="number" min="1" placeholder="Ej. 8" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              </div>
+              <div>
+                <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Material</label>
+                <input id="input-exercise-equipment" type="text" placeholder="Conos, petos, balones…" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+              </div>
+            </div>
             <div>
               <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Descripción</label>
               <textarea id="input-exercise-desc" rows="3" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf resize-y"></textarea>
             </div>
+            <div>
+              <label class="block text-xs uppercase tracking-wide text-muted mb-1.5">Variante de</label>
+              <select id="input-exercise-variant-of" class="w-full bg-card border border-border rounded-lg px-3 py-2 text-ink focus:outline-none focus:ring-2 focus:ring-turf">
+                <option value="">Ninguno (ejercicio base)</option>
+              </select>
+            </div>
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input id="input-exercise-favorite" type="checkbox" class="w-4 h-4 rounded border-border bg-card accent-turf">
+              <span class="text-sm text-muted">Marcar como favorito</span>
+            </label>
             <div class="flex gap-3 pt-2">
               <button type="button" id="exercise-modal-cancel" class="flex-1 border border-border rounded-lg py-2.5 font-display font-600 uppercase text-sm tracking-wide text-muted hover:text-ink hover:bg-card transition-colors">Cancelar</button>
-              <button type="submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
+              <button type="submit" id="exercise-modal-submit" class="flex-1 bg-turf hover:bg-turfline text-night rounded-lg py-2.5 font-display font-700 uppercase text-sm tracking-wide transition-colors">Guardar</button>
             </div>
           </form>
         </div>
